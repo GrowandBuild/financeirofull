@@ -1,6 +1,6 @@
 // Service Worker para PWA - Sistema de Gestão de Produtos
-const CACHE_NAME = 'produtos-app-v3';
-const RUNTIME_CACHE = 'produtos-runtime-v3';
+const CACHE_NAME = 'produtos-app-v4';
+const RUNTIME_CACHE = 'produtos-runtime-v4';
 
 // Arquivos essenciais para cache
 const CACHE_FILES = [
@@ -15,7 +15,7 @@ const CACHE_FILES = [
 
 // Instalar Service Worker
 self.addEventListener('install', (event) => {
-    console.log('Service Worker: Instalando v3...');
+    console.log('Service Worker: Instalando v4...');
     event.waitUntil(
         // Limpar caches antigos primeiro
         caches.keys().then((cacheNames) => {
@@ -30,7 +30,7 @@ self.addEventListener('install', (event) => {
         }).then(() => {
             // Abrir novo cache e adicionar arquivos
             return caches.open(CACHE_NAME).then((cache) => {
-                console.log('Service Worker: Cacheando arquivos essenciais v3');
+                console.log('Service Worker: Cacheando arquivos essenciais v4');
                 // Não usar cache.addAll que falha se um arquivo falhar
                 return Promise.all(
                     CACHE_FILES.map((file) => {
@@ -52,7 +52,7 @@ self.addEventListener('install', (event) => {
 
 // Ativar Service Worker
 self.addEventListener('activate', (event) => {
-    console.log('Service Worker: Ativando v3...');
+    console.log('Service Worker: Ativando v4...');
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
@@ -64,15 +64,18 @@ self.addEventListener('activate', (event) => {
                 })
             );
         }).then(() => {
-            // Limpar cache de runtime para forçar atualização do CSS/JS
-            return caches.delete('produtos-runtime-v2').catch(() => {});
+            // Limpar caches antigos de runtime para forçar atualização do CSS/JS
+            return Promise.all([
+                caches.delete('produtos-runtime-v2').catch(() => {}),
+                caches.delete('produtos-runtime-v3').catch(() => {})
+            ]);
         }).then(() => {
             return self.clients.claim();
         }).then(() => {
             // Notificar todos os clientes para recarregar
             return self.clients.matchAll().then((clients) => {
                 clients.forEach((client) => {
-                    client.postMessage({ type: 'SW_UPDATED', version: 'v3' });
+                    client.postMessage({ type: 'SW_UPDATED', version: 'v4' });
                 });
             });
         })
@@ -142,7 +145,7 @@ self.addEventListener('fetch', (event) => {
     // Se for navegação (página HTML), usar estratégia especial
     if (event.request.mode === 'navigate') {
         event.respondWith(
-            fetch(event.request)
+            fetch(event.request, { cache: 'no-store' })
                 .then((response) => {
                     // Cachear todas as páginas visitadas
                     const responseToCache = response.clone();
@@ -155,43 +158,94 @@ self.addEventListener('fetch', (event) => {
                 })
                 .catch(() => {
                     // Quando offline, tentar múltiplas estratégias
+                    const requestUrl = new URL(event.request.url);
+                    
+                    // Estratégia 1: Buscar a página exata solicitada no cache
                     return caches.match(event.request)
                         .then((cached) => {
-                            if (cached) return cached;
+                            if (cached) {
+                                console.log('Service Worker: Página encontrada no cache:', event.request.url);
+                                return cached;
+                            }
                             
-                            // Tentar buscar qualquer página visitada anteriormente
-                            return caches.open(RUNTIME_CACHE).then((cache) => {
-                                return cache.keys().then((keys) => {
-                                    // Buscar qualquer página HTML no cache
-                                    const pageKeys = keys.filter(key => {
-                                        const keyUrl = key.url;
-                                        return keyUrl.includes(url.origin) && 
-                                               !keyUrl.includes('/api/') &&
-                                               !keyUrl.endsWith('.css') &&
-                                               !keyUrl.endsWith('.js') &&
-                                               !keyUrl.endsWith('.png') &&
-                                               !keyUrl.endsWith('.jpg') &&
-                                               !keyUrl.endsWith('.json') &&
-                                               !keyUrl.includes('/offline.html');
-                                    });
-                                    
-                                    // Se encontrou páginas no cache, usar a primeira
-                                    if (pageKeys.length > 0) {
-                                        return cache.match(pageKeys[0]);
-                                    }
-                                    
-                                    // Como último recurso, mostrar página offline
-                                    return caches.match('/offline.html')
-                                        .then((offlinePage) => {
-                                            return offlinePage || new Response(
-                                                '<html><body><h1>Offline</h1><p>O aplicativo não está disponível offline. Por favor, verifique sua conexão.</p><script>setTimeout(() => window.location.reload(), 3000);</script></body></html>',
-                                                {
-                                                    headers: { 'Content-Type': 'text/html' },
-                                                    status: 200
+                            // Estratégia 2: Buscar no cache principal
+                            return caches.open(CACHE_NAME).then((cache) => {
+                                return cache.match(event.request)
+                                    .then((cached) => {
+                                        if (cached) {
+                                            console.log('Service Worker: Página encontrada no cache principal:', event.request.url);
+                                            return cached;
+                                        }
+                                        
+                                        // Estratégia 3: Buscar qualquer página HTML válida no cache
+                                        return caches.open(RUNTIME_CACHE).then((runtimeCache) => {
+                                            return runtimeCache.keys().then((keys) => {
+                                                // Filtrar apenas páginas HTML válidas
+                                                const htmlPages = keys.filter(key => {
+                                                    const keyUrl = key.url || key;
+                                                    const keyUrlObj = new URL(keyUrl);
+                                                    
+                                                    // Página válida se:
+                                                    // - É HTML (não tem extensão de arquivo ou é .html)
+                                                    // - Não é API
+                                                    // - Não é offline.html
+                                                    // - Não é asset (CSS, JS, imagens)
+                                                    return keyUrlObj.origin === requestUrl.origin &&
+                                                           !keyUrlObj.pathname.includes('/api/') &&
+                                                           !keyUrlObj.pathname.includes('/offline.html') &&
+                                                           !keyUrlObj.pathname.endsWith('.css') &&
+                                                           !keyUrlObj.pathname.endsWith('.js') &&
+                                                           !keyUrlObj.pathname.endsWith('.png') &&
+                                                           !keyUrlObj.pathname.endsWith('.jpg') &&
+                                                           !keyUrlObj.pathname.endsWith('.jpeg') &&
+                                                           !keyUrlObj.pathname.endsWith('.gif') &&
+                                                           !keyUrlObj.pathname.endsWith('.svg') &&
+                                                           !keyUrlObj.pathname.endsWith('.json') &&
+                                                           !keyUrlObj.pathname.endsWith('.ico');
+                                                });
+                                                
+                                                // Se encontrou páginas válidas, usar a primeira
+                                                if (htmlPages.length > 0) {
+                                                    console.log('Service Worker: Usando página alternativa do cache:', htmlPages[0].url || htmlPages[0]);
+                                                    return runtimeCache.match(htmlPages[0]);
                                                 }
-                                            );
+                                                
+                                                // Estratégia 4: Tentar buscar página inicial (/ ou /index.php)
+                                                const homePages = ['/', '/index.php'];
+                                                return Promise.all(
+                                                    homePages.map(homePage => {
+                                                        const homeRequest = new Request(homePage);
+                                                        return caches.match(homeRequest)
+                                                            .then((homeCached) => homeCached ? { found: true, response: homeCached } : { found: false });
+                                                    })
+                                                ).then((results) => {
+                                                    const found = results.find(r => r.found);
+                                                    if (found && found.response) {
+                                                        console.log('Service Worker: Usando página inicial do cache');
+                                                        return found.response;
+                                                    }
+                                                    
+                                                    // Como último recurso, mostrar página offline
+                                                    return caches.match('/offline.html')
+                                                        .then((offlinePage) => {
+                                                            if (offlinePage) {
+                                                                console.log('Service Worker: Mostrando página offline');
+                                                                return offlinePage;
+                                                            }
+                                                            
+                                                            // Gerar página offline básica se não encontrar
+                                                            return new Response(
+                                                                '<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Offline</title><style>body{background:#1f2937;color:white;font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}body{text-align:center;padding:2rem}</style></head><body><h1>Você está offline</h1><p>Nenhuma página está disponível no cache. Por favor, verifique sua conexão.</p><button onclick="window.location.reload()">Tentar Novamente</button><script>setInterval(()=>{if(navigator.onLine)window.location.reload()},3000)</script></body></html>',
+                                                                {
+                                                                    headers: { 'Content-Type': 'text/html' },
+                                                                    status: 200
+                                                                }
+                                                            );
+                                                        });
+                                                });
+                                            });
                                         });
-                                });
+                                    });
                             });
                         });
                 })

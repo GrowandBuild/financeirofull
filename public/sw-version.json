@@ -1,1 +1,1 @@
-{"version":1730593000,"timestamp":"2025-11-02T22:16:40.000000Z","message":"Service Worker atualizado v3 - Cache de CSS corrigido para produção"}
+{"version":1730594000,"timestamp":"2025-11-02T22:20:00.000000Z","message":"Service Worker atualizado v4 - Correção offline: prioriza páginas em cache sobre offline.html"}
