@@ -44,16 +44,42 @@ const ServiceWorkerManager = {
                     }
                 });
                 
-                // Verificar atualizações
+                // Verificar atualizações imediatamente
+                if (registration.waiting) {
+                    // Service Worker já está aguardando atualização
+                    console.log('Service Worker aguardando atualização, forçando ativação...');
+                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+                }
+                
+                // Verificar se há nova versão disponível
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
                     newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                            this.showUpdateNotification();
-                            this.forceReloadAssets();
+                        if (newWorker.state === 'installed') {
+                            if (navigator.serviceWorker.controller) {
+                                // Há uma nova versão, mas ainda não está ativa
+                                console.log('Nova versão do Service Worker instalada!');
+                                // Forçar ativação imediata
+                                newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                // Recarregar após ativação
+                                newWorker.addEventListener('statechange', () => {
+                                    if (newWorker.state === 'activated') {
+                                        console.log('Service Worker ativado, recarregando página...');
+                                        window.location.reload();
+                                    }
+                                });
+                            } else {
+                                // Primeira instalação
+                                console.log('Service Worker instalado pela primeira vez!');
+                            }
                         }
                     });
                 });
+                
+                // Verificar periodicamente por atualizações
+                setInterval(() => {
+                    registration.update();
+                }, 60000); // A cada 1 minuto
                 
                 return registration;
             } catch (error) {
@@ -81,8 +107,14 @@ const ServiceWorkerManager = {
     },
     
     showUpdateNotification() {
-        if (confirm('Nova versão disponível! Deseja atualizar?')) {
-            window.location.reload();
+        // Forçar atualização automaticamente
+        console.log('Atualizando Service Worker automaticamente...');
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+            // Recarregar após um pequeno delay
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
         }
     }
 };
