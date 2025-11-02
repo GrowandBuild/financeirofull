@@ -1,0 +1,9 @@
+{
+    "name": "laravel",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "echo 'No build process needed for Blade-only setup'",
+        "dev": "echo 'No dev process needed for Blade-only setup'"
+    }
+}
