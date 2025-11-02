@@ -729,43 +729,143 @@ function finalizePurchase() {
         checkoutBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processando...';
         checkoutBtn.disabled = true;
         
-        // Enviar dados para o servidor
-        fetch('/compra/save', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            },
-            body: JSON.stringify(purchaseData)
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                alert('Compra finalizada com sucesso! 🎉\n\nVocê será redirecionado para o fluxo de caixa.');
+        // Verificar se offlineStorage está disponível
+        if (!window.offlineStorage) {
+            console.error('OfflineStorage não está disponível! Verifique se o arquivo offline-storage.js está carregado.');
+            showNotification('Sistema offline não disponível. Recarregue a página.', 'error');
+            checkoutBtn.innerHTML = originalText;
+            checkoutBtn.disabled = false;
+            return;
+        }
+        
+        // Aguardar inicialização do IndexedDB se necessário
+        if (!window.offlineStorage.db) {
+            console.log('Aguardando inicialização do IndexedDB...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        // Verificar se está online e usar offlineStorage se necessário
+        const isOnline = navigator.onLine && window.offlineStorage.isOnlineStatus();
+        
+        if (isOnline) {
+            // Tentar enviar para o servidor
+            fetch('/compra/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify(purchaseData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    // Salvar também no cache offline
+                    if (window.offlineStorage) {
+                        const purchaseItem = {
+                            id: data.purchase_id || null,
+                            user_id: purchaseData.user_id || null,
+                            items: purchaseData.items,
+                            store: purchaseData.store,
+                            purchase_date: purchaseData.date,
+                            total: purchaseData.total,
+                            isPending: false
+                        };
+                        window.offlineStorage.savePurchase(purchaseItem).catch(err => {
+                            console.log('Erro ao salvar no cache offline:', err);
+                        });
+                    }
+                    
+                    alert('Compra finalizada com sucesso! 🎉\n\nVocê será redirecionado para o fluxo de caixa.');
+                    
+                    // Limpar carrinho sem confirmação
+                    initializeCart();
+                    document.querySelectorAll('.cart-product-card').forEach(card => {
+                        card.classList.remove('in-cart');
+                        card.querySelector('.cart-controls').style.display = 'none';
+                        card.querySelector('.quantity').textContent = '0';
+                    });
+                    
+                    // Redirecionar para fluxo de caixa
+                    window.location.href = '/cashflow/dashboard';
+                } else {
+                    showNotification('Erro ao salvar compra: ' + data.message, 'error');
+                    checkoutBtn.innerHTML = originalText;
+                    checkoutBtn.disabled = false;
+                }
+            })
+            .catch(error => {
+                console.error('Erro ao enviar para servidor, tentando salvar offline:', error);
                 
-                // Limpar carrinho sem confirmação
-                initializeCart();
-                document.querySelectorAll('.cart-product-card').forEach(card => {
-                    card.classList.remove('in-cart');
-                    card.querySelector('.cart-controls').style.display = 'none';
-                    card.querySelector('.quantity').textContent = '0';
-                });
-                
-                // Redirecionar para fluxo de caixa
-                window.location.href = '/cashflow/dashboard';
+                // Se falhar, tentar salvar offline
+                if (window.offlineStorage) {
+                    salvarCompraOffline(purchaseData, checkoutBtn, originalText);
+                } else {
+                    showNotification('Erro ao salvar compra. Verifique sua conexão.', 'error');
+                    checkoutBtn.innerHTML = originalText;
+                    checkoutBtn.disabled = false;
+                }
+            });
+        } else {
+            // Está offline, salvar diretamente
+            if (window.offlineStorage) {
+                salvarCompraOffline(purchaseData, checkoutBtn, originalText);
             } else {
-                showNotification('Erro ao salvar compra: ' + data.message, 'error');
+                showNotification('Você está offline e o sistema de armazenamento offline não está disponível.', 'error');
                 checkoutBtn.innerHTML = originalText;
                 checkoutBtn.disabled = false;
             }
-        })
-        .catch(error => {
-            console.error('Erro:', error);
-            showNotification('Erro ao conectar com o servidor. Tente novamente.', 'error');
+        }
+    }
+    
+    // Função para salvar compra offline
+    async function salvarCompraOffline(purchaseData, checkoutBtn, originalText) {
+        if (!window.offlineStorage) {
+            showNotification('Sistema offline não disponível.', 'error');
             checkoutBtn.innerHTML = originalText;
             checkoutBtn.disabled = false;
-        });
+            return;
+        }
+        try {
+            // Preparar item de compra para IndexedDB
+            const purchaseItem = {
+                items: purchaseData.items,
+                store: purchaseData.store,
+                purchase_date: purchaseData.date,
+                total: purchaseData.total,
+                timestamp: new Date().toISOString()
+            };
+            
+            // Salvar usando offlineStorage
+            await window.offlineStorage.savePurchase(purchaseItem);
+            
+            alert('Compra salva offline! ✅\n\nA compra será sincronizada automaticamente quando você voltar online.');
+            
+            // Limpar carrinho
+            initializeCart();
+            document.querySelectorAll('.cart-product-card').forEach(card => {
+                card.classList.remove('in-cart');
+                card.querySelector('.cart-controls').style.display = 'none';
+                card.querySelector('.quantity').textContent = '0';
+            });
+            
+            // Não redirecionar quando offline, apenas limpar
+            checkoutBtn.innerHTML = originalText;
+            checkoutBtn.disabled = false;
+            
+        } catch (error) {
+            console.error('Erro ao salvar offline:', error);
+            showNotification('Erro ao salvar compra offline. Tente novamente.', 'error');
+            checkoutBtn.innerHTML = originalText;
+            checkoutBtn.disabled = false;
+        }
     }
+    
 }
 
 // Filter products by category

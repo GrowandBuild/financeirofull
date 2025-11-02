@@ -33,7 +33,7 @@ const ServiceWorkerManager = {
     async register() {
         if ('serviceWorker' in navigator) {
             try {
-                const registration = await navigator.serviceWorker.register('/sw.js?v=4');
+                const registration = await navigator.serviceWorker.register('/sw.js?v=5');
                 console.log('Service Worker registrado:', registration.scope);
                 
                 // Escutar mensagens do Service Worker

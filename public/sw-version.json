@@ -1,1 +1,1 @@
-{"version":1730594000,"timestamp":"2025-11-02T22:20:00.000000Z","message":"Service Worker atualizado v4 - Correção offline: prioriza páginas em cache sobre offline.html"}
+{"version":1730595000,"timestamp":"2025-11-02T22:25:00.000000Z","message":"Service Worker atualizado v5 - Lógica simplificada com async/await e cacheamento melhorado"}

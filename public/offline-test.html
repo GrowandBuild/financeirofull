@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Offline - Sistema de Gestão</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #1f2937;
+            color: white;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .test-section {
+            background: #374151;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+        button {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #059669;
+        }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #10b981; }
+        .error { background: #ef4444; }
+        .info { background: #3b82f6; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Teste do Sistema Offline</h1>
+    
+    <div class="test-section">
+        <h2>1. Status do Sistema</h2>
+        <div id="statusInfo"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>2. Testes</h2>
+        <button onclick="testarOfflineStorage()">Testar OfflineStorage</button>
+        <button onclick="testarIndexedDB()">Testar IndexedDB</button>
+        <button onclick="testarSalvamento()">Testar Salvamento</button>
+        <button onclick="limparCache()">Limpar Cache</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>3. Resultados</h2>
+        <div id="results"></div>
+    </div>
+    
+    <script src="/js/offline-storage.js"></script>
+    <script>
+        function adicionarResultado(mensagem, tipo = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${tipo}`;
+            div.textContent = mensagem;
+            results.appendChild(div);
+        }
+        
+        function atualizarStatus() {
+            const statusInfo = document.getElementById('statusInfo');
+            let html = '<div class="status info">';
+            html += `Online: ${navigator.onLine ? '✅ Sim' : '❌ Não'}<br>`;
+            html += `OfflineStorage: ${window.offlineStorage ? '✅ Disponível' : '❌ Não disponível'}<br>`;
+            if (window.offlineStorage) {
+                html += `IndexedDB: ${window.offlineStorage.db ? '✅ Inicializado' : '⏳ Aguardando'}<br>`;
+                html += `Status: ${window.offlineStorage.isOnlineStatus() ? '🟢 Online' : '🔴 Offline'}`;
+            }
+            html += '</div>';
+            statusInfo.innerHTML = html;
+        }
+        
+        async function testarOfflineStorage() {
+            adicionarResultado('Testando OfflineStorage...', 'info');
+            
+            if (!window.offlineStorage) {
+                adicionarResultado('❌ OfflineStorage não está disponível!', 'error');
+                return;
+            }
+            
+            try {
+                await window.offlineStorage.init();
+                adicionarResultado('✅ OfflineStorage inicializado com sucesso!', 'success');
+                atualizarStatus();
+            } catch (error) {
+                adicionarResultado(`❌ Erro: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testarIndexedDB() {
+            adicionarResultado('Testando IndexedDB...', 'info');
+            
+            if (!window.offlineStorage || !window.offlineStorage.db) {
+                adicionarResultado('❌ IndexedDB não está disponível!', 'error');
+                return;
+            }
+            
+            try {
+                const products = await window.offlineStorage.getProducts();
+                const purchases = await window.offlineStorage.getPurchases();
+                adicionarResultado(`✅ IndexedDB funcionando! Produtos: ${products.length}, Compras: ${purchases.length}`, 'success');
+            } catch (error) {
+                adicionarResultado(`❌ Erro: ${error.message}`, 'error');
+            }
+        }
+        
+        async function testarSalvamento() {
+            adicionarResultado('Testando salvamento...', 'info');
+            
+            if (!window.offlineStorage) {
+                adicionarResultado('❌ OfflineStorage não está disponível!', 'error');
+                return;
+            }
+            
+            try {
+                const testProduct = {
+                    name: 'Produto Teste ' + Date.now(),
+                    price: 10.50,
+                    category: 'Teste'
+                };
+                
+                const saved = await window.offlineStorage.saveProduct(testProduct);
+                adicionarResultado(`✅ Produto salvo com sucesso! ID: ${saved.id}`, 'success');
+            } catch (error) {
+                adicionarResultado(`❌ Erro: ${error.message}`, 'error');
+            }
+        }
+        
+        async function limparCache() {
+            if (confirm('Tem certeza que deseja limpar o cache?')) {
+                try {
+                    if (window.offlineStorage) {
+                        await window.offlineStorage.clearCache();
+                    }
+                    
+                    if ('caches' in window) {
+                        const cacheNames = await caches.keys();
+                        await Promise.all(cacheNames.map(name => caches.delete(name)));
+                    }
+                    
+                    adicionarResultado('✅ Cache limpo com sucesso!', 'success');
+                    atualizarStatus();
+                } catch (error) {
+                    adicionarResultado(`❌ Erro: ${error.message}`, 'error');
+                }
+            }
+        }
+        
+        // Atualizar status inicial
+        setInterval(atualizarStatus, 1000);
+        atualizarStatus();
+        
+        // Escutar mudanças de status online/offline
+        window.addEventListener('online', () => {
+            adicionarResultado('🌐 Conexão restaurada!', 'success');
+            atualizarStatus();
+        });
+        
+        window.addEventListener('offline', () => {
+            adicionarResultado('📴 Conexão perdida - Modo offline ativado', 'info');
+            atualizarStatus();
+        });
+    </script>
+</body>
+</html>
+

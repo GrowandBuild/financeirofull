@@ -61,6 +61,22 @@
         
         <!-- Custom JavaScript -->
         <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
+        
+        <!-- Verificar inicialização do OfflineStorage -->
+        <script>
+            // Aguardar inicialização do OfflineStorage
+            document.addEventListener('DOMContentLoaded', () => {
+                setTimeout(() => {
+                    if (window.offlineStorage) {
+                        console.log('✅ OfflineStorage inicializado:', window.offlineStorage);
+                        console.log('📡 Status:', window.offlineStorage.isOnlineStatus() ? 'Online' : 'Offline');
+                    } else {
+                        console.error('❌ OfflineStorage não está disponível!');
+                        console.log('Verifique se o arquivo public/js/offline-storage.js existe e está sendo carregado.');
+                    }
+                }, 1000);
+            });
+        </script>
     </head>
 <body>
     <!-- Switcher de Sistemas -->
