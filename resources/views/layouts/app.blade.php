@@ -37,7 +37,7 @@
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
         
         <!-- Custom CSS -->
-        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+        <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}" id="main-css">
         
         <!-- Chart.js para gráficos (carregamento diferido) -->
         <script>
@@ -60,7 +60,7 @@
         <script src="{{ asset('js/offline-storage.js') }}"></script>
         
         <!-- Custom JavaScript -->
-        <script src="{{ asset('js/app.js') }}"></script>
+        <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
     </head>
 <body>
     <!-- Switcher de Sistemas -->

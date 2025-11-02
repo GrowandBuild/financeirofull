@@ -278,7 +278,7 @@ body{background:#1f2937!important;color:#fff;font-family:system-ui,-apple-system
 .hamburger-menu-panel {
     position: fixed;
     top: 0;
-    left: -100%;
+    left: -100% !important;
     width: 300px;
     max-width: 85vw;
     height: 100vh;
@@ -290,10 +290,14 @@ body{background:#1f2937!important;color:#fff;font-family:system-ui,-apple-system
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
+    visibility: hidden;
+    opacity: 0;
 }
 
 .hamburger-menu-panel.active {
-    left: 0;
+    left: 0 !important;
+    visibility: visible;
+    opacity: 1;
 }
 
 .hamburger-header {
@@ -418,6 +422,9 @@ body{background:#1f2937!important;color:#fff;font-family:system-ui,-apple-system
     gap: 0.25rem;
     flex: 1;
     min-width: 0;
+    overflow: hidden;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .menu-item-title {
@@ -425,12 +432,18 @@ body{background:#1f2937!important;color:#fff;font-family:system-ui,-apple-system
     font-weight: 600;
     color: white;
     line-height: 1.2;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
 }
 
 .menu-item-subtitle {
     font-size: 0.75rem;
     color: rgba(255, 255, 255, 0.6);
     line-height: 1.2;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: normal;
 }
 
 /* Media queries para responsividade do sub-header compacto */
@@ -483,7 +496,11 @@ body{background:#1f2937!important;color:#fff;font-family:system-ui,-apple-system
 
 @media (max-width: 480px) {
     body {
-        padding-top: 2.75rem !important;
+        padding-top: 3.5rem !important;
+    }
+    
+    .mobile-container {
+        padding-top: 1rem;
     }
     
     .system-switcher {
@@ -499,6 +516,15 @@ body{background:#1f2937!important;color:#fff;font-family:system-ui,-apple-system
     
     .hamburger-menu-panel {
         width: 260px;
+        left: -100% !important;
+        visibility: hidden;
+        opacity: 0;
+    }
+    
+    .hamburger-menu-panel.active {
+        left: 0 !important;
+        visibility: visible;
+        opacity: 1;
     }
     
     .hamburger-header {
@@ -507,19 +533,36 @@ body{background:#1f2937!important;color:#fff;font-family:system-ui,-apple-system
     
     .hamburger-header h3 {
         font-size: 1rem;
+        word-wrap: break-word;
     }
     
     .hamburger-menu-item {
         padding: 0.875rem 1rem;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
     }
     
     .menu-item-icon {
         width: 2.25rem;
         height: 2.25rem;
+        flex-shrink: 0;
     }
     
     .menu-item-icon i {
         font-size: 1.125rem;
+    }
+    
+    .menu-item-content {
+        min-width: 0;
+        flex: 1;
+        overflow: hidden;
+    }
+    
+    .menu-item-title,
+    .menu-item-subtitle {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        white-space: normal;
     }
     
     .monthly-balance {

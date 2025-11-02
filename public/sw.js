@@ -1,6 +1,6 @@
 // Service Worker para PWA - Sistema de Gestão de Produtos
-const CACHE_NAME = 'produtos-app-v2';
-const RUNTIME_CACHE = 'produtos-runtime-v2';
+const CACHE_NAME = 'produtos-app-v3';
+const RUNTIME_CACHE = 'produtos-runtime-v3';
 
 // Arquivos essenciais para cache
 const CACHE_FILES = [
@@ -15,20 +15,44 @@ const CACHE_FILES = [
 
 // Instalar Service Worker
 self.addEventListener('install', (event) => {
-    console.log('Service Worker: Instalando...');
+    console.log('Service Worker: Instalando v3...');
     event.waitUntil(
-        caches.open(CACHE_NAME)
-            .then((cache) => {
-                console.log('Service Worker: Cacheando arquivos essenciais');
-                return cache.addAll(CACHE_FILES);
-            })
-            .then(() => self.skipWaiting())
+        // Limpar caches antigos primeiro
+        caches.keys().then((cacheNames) => {
+            return Promise.all(
+                cacheNames.map((cacheName) => {
+                    if (cacheName !== CACHE_NAME && cacheName !== RUNTIME_CACHE) {
+                        console.log('Service Worker: Removendo cache antigo:', cacheName);
+                        return caches.delete(cacheName);
+                    }
+                })
+            );
+        }).then(() => {
+            // Abrir novo cache e adicionar arquivos
+            return caches.open(CACHE_NAME).then((cache) => {
+                console.log('Service Worker: Cacheando arquivos essenciais v3');
+                // Não usar cache.addAll que falha se um arquivo falhar
+                return Promise.all(
+                    CACHE_FILES.map((file) => {
+                        return fetch(file, { cache: 'no-store' })
+                            .then((response) => {
+                                if (response.ok) {
+                                    return cache.put(file, response);
+                                }
+                            })
+                            .catch((err) => {
+                                console.warn('Erro ao cachear:', file, err);
+                            });
+                    })
+                );
+            });
+        }).then(() => self.skipWaiting())
     );
 });
 
 // Ativar Service Worker
 self.addEventListener('activate', (event) => {
-    console.log('Service Worker: Ativando...');
+    console.log('Service Worker: Ativando v3...');
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
@@ -39,8 +63,42 @@ self.addEventListener('activate', (event) => {
                     }
                 })
             );
-        }).then(() => self.clients.claim())
+        }).then(() => {
+            // Limpar cache de runtime para forçar atualização do CSS/JS
+            return caches.delete('produtos-runtime-v2').catch(() => {});
+        }).then(() => {
+            return self.clients.claim();
+        }).then(() => {
+            // Notificar todos os clientes para recarregar
+            return self.clients.matchAll().then((clients) => {
+                clients.forEach((client) => {
+                    client.postMessage({ type: 'SW_UPDATED', version: 'v3' });
+                });
+            });
+        })
     );
+});
+
+// Escutar mensagens do cliente
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'CLEAR_ASSET_CACHE') {
+        // Limpar cache de assets (CSS/JS)
+        caches.open(RUNTIME_CACHE).then((cache) => {
+            return cache.keys().then((keys) => {
+                return Promise.all(
+                    keys
+                        .filter((key) => {
+                            const url = key.url || key;
+                            return url.includes('/css/') || url.includes('/js/');
+                        })
+                        .map((key) => cache.delete(key))
+                );
+            });
+        }).then(() => {
+            console.log('Cache de assets limpo');
+            event.ports && event.ports[0] && event.ports[0].postMessage({ success: true });
+        });
+    }
 });
 
 // Interceptar requisições (Network First Strategy - melhorada para funcionar offline)
@@ -55,7 +113,31 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
+    // Para CSS e JS, sempre buscar versão nova em produção
     const url = new URL(event.request.url);
+    const isAsset = url.pathname.includes('/css/') || url.pathname.includes('/js/');
+    
+    // Se for asset, usar estratégia network-first com cache curto
+    if (isAsset) {
+        event.respondWith(
+            fetch(event.request, { cache: 'no-store' })
+                .then((response) => {
+                    // Cachear por curto tempo
+                    if (response.ok) {
+                        const responseToCache = response.clone();
+                        caches.open(RUNTIME_CACHE).then((cache) => {
+                            cache.put(event.request, responseToCache);
+                        });
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    // Se falhar, tentar do cache
+                    return caches.match(event.request);
+                })
+        );
+        return;
+    }
     
     // Se for navegação (página HTML), usar estratégia especial
     if (event.request.mode === 'navigate') {
@@ -102,7 +184,7 @@ self.addEventListener('fetch', (event) => {
                                     return caches.match('/offline.html')
                                         .then((offlinePage) => {
                                             return offlinePage || new Response(
-                                                '<html><body><h1>Offline</h1><p>O aplicativo não está disponível offline. Por favor, verifique sua conexão.</p></body></html>',
+                                                '<html><body><h1>Offline</h1><p>O aplicativo não está disponível offline. Por favor, verifique sua conexão.</p><script>setTimeout(() => window.location.reload(), 3000);</script></body></html>',
                                                 {
                                                     headers: { 'Content-Type': 'text/html' },
                                                     status: 200

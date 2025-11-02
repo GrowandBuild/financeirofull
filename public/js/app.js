@@ -33,8 +33,16 @@ const ServiceWorkerManager = {
     async register() {
         if ('serviceWorker' in navigator) {
             try {
-                const registration = await navigator.serviceWorker.register('/sw.js');
+                const registration = await navigator.serviceWorker.register('/sw.js?v=3');
                 console.log('Service Worker registrado:', registration.scope);
+                
+                // Escutar mensagens do Service Worker
+                navigator.serviceWorker.addEventListener('message', (event) => {
+                    if (event.data && event.data.type === 'SW_UPDATED') {
+                        console.log('Service Worker atualizado para:', event.data.version);
+                        this.forceReloadAssets();
+                    }
+                });
                 
                 // Verificar atualizações
                 registration.addEventListener('updatefound', () => {
@@ -42,6 +50,7 @@ const ServiceWorkerManager = {
                     newWorker.addEventListener('statechange', () => {
                         if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                             this.showUpdateNotification();
+                            this.forceReloadAssets();
                         }
                     });
                 });
@@ -50,6 +59,24 @@ const ServiceWorkerManager = {
             } catch (error) {
                 console.error('Erro ao registrar Service Worker:', error);
             }
+        }
+    },
+    
+    forceReloadAssets() {
+        // Forçar recarregamento do CSS
+        const cssLink = document.getElementById('main-css') || document.querySelector('link[href*="app.css"]');
+        if (cssLink) {
+            const href = cssLink.href.split('?')[0];
+            const timestamp = new Date().getTime();
+            cssLink.href = `${href}?v=${timestamp}`;
+            console.log('CSS recarregado:', cssLink.href);
+        }
+        
+        // Limpar cache de CSS/JS no Service Worker
+        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+                type: 'CLEAR_ASSET_CACHE'
+            });
         }
     },
     
@@ -525,11 +552,52 @@ const App = {
     }
 };
 
+// Função para forçar verificação de CSS em produção
+function forceReloadCSS() {
+    const cssLink = document.getElementById('main-css') || document.querySelector('link[href*="app.css"]');
+    if (cssLink) {
+        // Verificar se CSS está carregado corretamente
+        setTimeout(() => {
+            // Verificar se elementos críticos estão visíveis
+            const hamburger = document.getElementById('hamburgerMenu');
+            const menuPanel = document.querySelector('.hamburger-menu-panel');
+            
+            if (hamburger && menuPanel) {
+                const hamburgerStyle = window.getComputedStyle(hamburger);
+                const panelStyle = window.getComputedStyle(menuPanel);
+                
+                // Se estiver visível quando não deveria estar ou vice-versa
+                const shouldBeHidden = !menuPanel.classList.contains('active');
+                const isHidden = panelStyle.visibility === 'hidden' || panelStyle.left === '-100%' || panelStyle.left.includes('-100%');
+                
+                if ((shouldBeHidden && !isHidden) || (!shouldBeHidden && isHidden)) {
+                    // CSS pode estar desatualizado
+                    console.warn('CSS pode estar desatualizado, forçando recarregamento...');
+                    const href = cssLink.href.split('?')[0];
+                    const timestamp = new Date().getTime();
+                    cssLink.href = `${href}?v=${timestamp}`;
+                    
+                    // Também limpar cache no Service Worker
+                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                        navigator.serviceWorker.controller.postMessage({
+                            type: 'CLEAR_ASSET_CACHE'
+                        });
+                    }
+                }
+            }
+        }, 1500);
+    }
+}
+
 // Inicializar quando DOM estiver pronto
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => App.init());
+    document.addEventListener('DOMContentLoaded', () => {
+        App.init();
+        forceReloadCSS();
+    });
 } else {
     App.init();
+    forceReloadCSS();
 }
 
 // Cache Simple Functions
