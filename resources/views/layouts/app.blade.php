@@ -62,9 +62,6 @@
         <!-- Offline Forms Interceptor -->
         <script src="{{ asset('js/offline-forms.js') }}"></script>
         
-        <!-- Offline Activator (Botão de Ativação) -->
-        <script src="{{ asset('js/offline-activator.js') }}"></script>
-        
         <!-- Custom JavaScript -->
         <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
         

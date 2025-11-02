@@ -16,14 +16,30 @@
     async function init() {
         // Aguardar inicialização do offlineStorage
         let retries = 0;
-        while (!window.offlineStorage && retries < 10) {
+        while (!window.offlineStorage && retries < 20) {
             await new Promise(resolve => setTimeout(resolve, 500));
             retries++;
         }
         
         if (!window.offlineStorage) {
             console.warn('⚠️ OfflineStorage não disponível - formulários não funcionarão offline');
+            console.warn('Verifique se o arquivo offline-storage.js está sendo carregado corretamente');
             return;
+        }
+        
+        // Verificar se métodos existem
+        if (typeof window.offlineStorage.waitForInit !== 'function') {
+            console.error('❌ Erro: waitForInit não é uma função');
+            console.error('OfflineStorage disponível:', window.offlineStorage);
+            console.error('Métodos disponíveis:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.offlineStorage)));
+            
+            // Tentar aguardar mais um pouco
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            if (typeof window.offlineStorage.waitForInit !== 'function') {
+                console.error('❌ waitForInit ainda não está disponível após aguardar');
+                return;
+            }
         }
         
         // Aguardar inicialização do IndexedDB
@@ -32,6 +48,7 @@
             console.log('✅ OfflineForms: Sistema offline pronto');
         } catch (error) {
             console.error('❌ Erro ao inicializar sistema offline:', error);
+            console.error('Stack:', error.stack);
             return;
         }
         
@@ -111,6 +128,40 @@
             }
             
             try {
+                // Verificar se offlineStorage está pronto
+                if (!window.offlineStorage || typeof window.offlineStorage.waitForInit !== 'function') {
+                    console.error('❌ OfflineStorage não está disponível ou não foi inicializado corretamente');
+                    showErrorMessage('Sistema offline não está disponível. Recarregue a página.');
+                    
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        if (submitBtn.tagName === 'BUTTON') {
+                            submitBtn.innerHTML = originalText;
+                        } else {
+                            submitBtn.value = originalText;
+                        }
+                    }
+                    return;
+                }
+                
+                // Aguardar inicialização se necessário
+                try {
+                    await window.offlineStorage.waitForInit();
+                } catch (error) {
+                    console.error('❌ Erro ao aguardar inicialização:', error);
+                    showErrorMessage('Erro ao inicializar sistema offline: ' + error.message);
+                    
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        if (submitBtn.tagName === 'BUTTON') {
+                            submitBtn.innerHTML = originalText;
+                        } else {
+                            submitBtn.value = originalText;
+                        }
+                    }
+                    return;
+                }
+                
                 // Verificar se está online
                 const isOnline = navigator.onLine && window.offlineStorage.isOnlineStatus();
                 

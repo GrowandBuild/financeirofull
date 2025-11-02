@@ -923,8 +923,46 @@ class OfflineStorage {
     }
 }
 
-// Instanciar storage global
-window.offlineStorage = new OfflineStorage();
+// Aguardar DOM pronto antes de instanciar
+(function() {
+    'use strict';
+    
+    function initOfflineStorage() {
+        try {
+            // Instanciar storage global
+            window.offlineStorage = new OfflineStorage();
+            
+            // Verificar se foi criado corretamente
+            if (!window.offlineStorage) {
+                console.error('❌ Erro: offlineStorage não foi criado');
+                return;
+            }
+            
+            // Verificar se métodos existem
+            if (typeof window.offlineStorage.waitForInit !== 'function') {
+                console.error('❌ Erro: waitForInit não é uma função');
+                // Tentar recriar
+                delete window.offlineStorage;
+                window.offlineStorage = new OfflineStorage();
+            }
+            
+            console.log('✅ OfflineStorage instanciado:', window.offlineStorage);
+            console.log('📋 Métodos disponíveis:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.offlineStorage)));
+            
+        } catch (error) {
+            console.error('❌ Erro ao instanciar OfflineStorage:', error);
+        }
+    }
+    
+    // Aguardar DOM e scripts carregarem
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            setTimeout(initOfflineStorage, 100);
+        });
+    } else {
+        setTimeout(initOfflineStorage, 100);
+    }
+})();
 
 // Exportar para uso em outros scripts
 if (typeof module !== 'undefined' && module.exports) {

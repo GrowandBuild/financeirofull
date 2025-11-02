@@ -42,9 +42,6 @@
     <!-- Offline Forms Interceptor -->
     <script src="{{ asset('js/offline-forms.js') }}"></script>
     
-    <!-- Offline Activator (Botão de Ativação) -->
-    <script src="{{ asset('js/offline-activator.js') }}"></script>
-    
     <!-- Custom CSS para Fluxo de Caixa -->
     <style>
         body {
