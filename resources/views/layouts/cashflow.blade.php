@@ -37,10 +37,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <!-- Offline Storage -->
-    <script src="{{ asset('js/offline-storage.js') }}"></script>
+    <script src="{{ asset('js/offline-storage.js') }}?v={{ filemtime(public_path('js/offline-storage.js')) }}"></script>
+    
+    <!-- Mobile Fixes (deve vir após offline-storage) -->
+    <script src="{{ asset('js/mobile-offline-fix.js') }}?v={{ filemtime(public_path('js/mobile-offline-fix.js')) }}"></script>
     
     <!-- Offline Forms Interceptor -->
-    <script src="{{ asset('js/offline-forms.js') }}"></script>
+    <script src="{{ asset('js/offline-forms.js') }}?v={{ filemtime(public_path('js/offline-forms.js')) }}"></script>
     
     <!-- Custom CSS para Fluxo de Caixa -->
     <style>

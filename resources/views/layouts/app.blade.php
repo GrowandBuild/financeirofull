@@ -57,10 +57,13 @@
         </script>
         
         <!-- Offline Storage -->
-        <script src="{{ asset('js/offline-storage.js') }}"></script>
+        <script src="{{ asset('js/offline-storage.js') }}?v={{ filemtime(public_path('js/offline-storage.js')) }}"></script>
+        
+        <!-- Mobile Fixes (deve vir após offline-storage) -->
+        <script src="{{ asset('js/mobile-offline-fix.js') }}?v={{ filemtime(public_path('js/mobile-offline-fix.js')) }}"></script>
         
         <!-- Offline Forms Interceptor -->
-        <script src="{{ asset('js/offline-forms.js') }}"></script>
+        <script src="{{ asset('js/offline-forms.js') }}?v={{ filemtime(public_path('js/offline-forms.js')) }}"></script>
         
         <!-- Custom JavaScript -->
         <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>

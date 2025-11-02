@@ -923,46 +923,45 @@ class OfflineStorage {
     }
 }
 
-// Aguardar DOM pronto antes de instanciar
-(function() {
-    'use strict';
+// Instanciar storage global imediatamente (sem aguardar DOM)
+// Isso garante que esteja disponível antes de outros scripts tentarem usar
+try {
+    window.offlineStorage = new OfflineStorage();
     
-    function initOfflineStorage() {
-        try {
-            // Instanciar storage global
-            window.offlineStorage = new OfflineStorage();
+    // Verificar após um pequeno delay
+    setTimeout(() => {
+        if (window.offlineStorage) {
+            console.log('✅ OfflineStorage instanciado');
             
-            // Verificar se foi criado corretamente
-            if (!window.offlineStorage) {
-                console.error('❌ Erro: offlineStorage não foi criado');
-                return;
+            // Verificar métodos
+            if (typeof window.offlineStorage.waitForInit === 'function') {
+                console.log('✅ Método waitForInit disponível');
+            } else {
+                console.error('❌ waitForInit não está disponível');
             }
             
-            // Verificar se métodos existem
-            if (typeof window.offlineStorage.waitForInit !== 'function') {
-                console.error('❌ Erro: waitForInit não é uma função');
-                // Tentar recriar
-                delete window.offlineStorage;
-                window.offlineStorage = new OfflineStorage();
+            if (typeof window.offlineStorage.savePurchase === 'function') {
+                console.log('✅ Método savePurchase disponível');
+            } else {
+                console.error('❌ savePurchase não está disponível');
             }
-            
-            console.log('✅ OfflineStorage instanciado:', window.offlineStorage);
-            console.log('📋 Métodos disponíveis:', Object.getOwnPropertyNames(Object.getPrototypeOf(window.offlineStorage)));
-            
-        } catch (error) {
-            console.error('❌ Erro ao instanciar OfflineStorage:', error);
+        } else {
+            console.error('❌ OfflineStorage não foi criado');
         }
-    }
+    }, 200);
+} catch (error) {
+    console.error('❌ Erro crítico ao instanciar OfflineStorage:', error);
     
-    // Aguardar DOM e scripts carregarem
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(initOfflineStorage, 100);
-        });
-    } else {
-        setTimeout(initOfflineStorage, 100);
-    }
-})();
+    // Tentar novamente após 1 segundo
+    setTimeout(() => {
+        try {
+            window.offlineStorage = new OfflineStorage();
+            console.log('✅ OfflineStorage recriado com sucesso');
+        } catch (retryError) {
+            console.error('❌ Falha ao recriar OfflineStorage:', retryError);
+        }
+    }, 1000);
+}
 
 // Exportar para uso em outros scripts
 if (typeof module !== 'undefined' && module.exports) {
