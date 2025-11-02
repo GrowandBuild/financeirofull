@@ -15,12 +15,14 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
         
         // Criar usuário admin
-        User::create([
-            'name' => 'Admin',
-            'email' => 'admin@test.com',
-            'password' => bcrypt('password'),
-            'email_verified_at' => now(),
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@test.com'],
+            [
+                'name' => 'Admin',
+                'password' => bcrypt('password'),
+                'email_verified_at' => now(),
+            ]
+        );
 
         $this->call([
             ProductSeeder::class,
