@@ -25,9 +25,5 @@ class DatabaseSeeder extends Seeder
         );
         
         $this->command->info("Usuário admin criado/atualizado: {$user->email}");
-
-        $this->call([
-            ProductSeeder::class,
-        ]);
     }
 }
