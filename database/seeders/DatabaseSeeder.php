@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
         // User::factory(10)->create();
         
         // Criar usuário admin
-        User::updateOrCreate(
+        $user = User::updateOrCreate(
             ['email' => 'admin@test.com'],
             [
                 'name' => 'Admin',
@@ -23,6 +23,8 @@ class DatabaseSeeder extends Seeder
                 'email_verified_at' => now(),
             ]
         );
+        
+        $this->command->info("Usuário admin criado/atualizado: {$user->email}");
 
         $this->call([
             ProductSeeder::class,

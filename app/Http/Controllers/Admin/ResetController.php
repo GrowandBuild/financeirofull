@@ -40,15 +40,16 @@ class ResetController extends Controller
         ]);
         
         try {
-            // Desabilitar foreign key checks temporariamente
-            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
-            
             // Contar registros antes da exclusão
             $productsCount = Product::count();
             $purchasesCount = Purchase::count();
             $alertsCount = PriceAlert::count();
             
-            // Limpar tabelas (exceto users)
+            // Desabilitar foreign key checks temporariamente
+            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            
+            // Limpar tabelas (exceto users) usando truncate (mais rápido e confiável)
+            // NOTA: truncate() não funciona dentro de transações, mas é mais eficiente
             Product::truncate();
             Purchase::truncate();
             PriceAlert::truncate();
@@ -61,13 +62,41 @@ class ResetController extends Controller
             // Reabilitar foreign key checks
             DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             
+            // Verificar se os dados foram realmente apagados
+            $remainingProducts = Product::count();
+            $remainingPurchases = Purchase::count();
+            $remainingAlerts = PriceAlert::count();
+            
+            if ($remainingProducts > 0 || $remainingPurchases > 0 || $remainingAlerts > 0) {
+                \Log::error('Reset falhou: dados ainda presentes após truncate', [
+                    'products' => $remainingProducts,
+                    'purchases' => $remainingPurchases,
+                    'alerts' => $remainingAlerts
+                ]);
+                return redirect()->back()
+                    ->with('error', "❌ Erro: Os dados não foram completamente removidos. Produtos: {$remainingProducts}, Compras: {$remainingPurchases}, Alertas: {$remainingAlerts}");
+            }
+            
             // LIMPAR TODOS OS CACHES APÓS RESET
             $this->clearAllCaches();
+            
+            \Log::info('Reset do banco de dados concluído com sucesso', [
+                'removed_products' => $productsCount,
+                'removed_purchases' => $purchasesCount,
+                'removed_alerts' => $alertsCount,
+                'remaining_products' => $remainingProducts,
+                'remaining_purchases' => $remainingPurchases,
+                'remaining_alerts' => $remainingAlerts
+            ]);
             
             return redirect()->route('admin.products.index')
                 ->with('success', "✅ Reset concluído! Removidos: {$productsCount} produtos, {$purchasesCount} compras e {$alertsCount} alertas. Usuários mantidos. Cache limpo.");
                 
         } catch (\Exception $e) {
+            \Log::error('Erro durante reset do banco de dados', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return redirect()->back()
                 ->with('error', '❌ Erro durante o reset: ' . $e->getMessage());
         }
@@ -79,39 +108,34 @@ class ResetController extends Controller
     private function clearAllCaches()
     {
         try {
-            // Limpar cache do Laravel
+            // Flush completo do cache (remove tudo)
+            \Illuminate\Support\Facades\Cache::flush();
+            
+            // Limpar cache do Laravel via artisan
             \Illuminate\Support\Facades\Artisan::call('cache:clear');
             \Illuminate\Support\Facades\Artisan::call('config:clear');
             \Illuminate\Support\Facades\Artisan::call('view:clear');
             \Illuminate\Support\Facades\Artisan::call('route:clear');
+            \Illuminate\Support\Facades\Artisan::call('optimize:clear');
             
-            // Limpar cache específico de produtos
-            $patterns = [
-                'products_index_*',
-                'product_show_*',
-                'search_*',
-                'products_compra_*',
+            // Limpar cache específico de produtos (chaves exatas)
+            $cacheKeys = [
                 'api_products',
-                'monthly_stats_*',
-                'top_products_*'
+                'products_index_guest',
             ];
             
-            foreach ($patterns as $pattern) {
-                \Illuminate\Support\Facades\Cache::forget($pattern);
+            foreach ($cacheKeys as $key) {
+                \Illuminate\Support\Facades\Cache::forget($key);
             }
             
-            // Limpar cache de todos os usuários
+            // Limpar cache de todos os usuários (chaves exatas)
             $users = \App\Models\User::pluck('id');
             foreach ($users as $userId) {
                 \Illuminate\Support\Facades\Cache::forget("products_index_{$userId}");
-                \Illuminate\Support\Facades\Cache::forget("search_*_{$userId}");
                 \Illuminate\Support\Facades\Cache::forget("products_compra_{$userId}");
+                \Illuminate\Support\Facades\Cache::forget("monthly_stats_{$userId}");
+                \Illuminate\Support\Facades\Cache::forget("top_products_{$userId}");
             }
-            
-            // Limpar cache de guest
-            \Illuminate\Support\Facades\Cache::forget('products_index_guest');
-            \Illuminate\Support\Facades\Cache::forget('search_*_guest');
-            \Illuminate\Support\Facades\Cache::forget('products_compra_guest');
             
         } catch (\Exception $e) {
             \Log::error('Erro ao limpar cache após reset: ' . $e->getMessage());
