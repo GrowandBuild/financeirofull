@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Ícones PWA - Automático</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            margin: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.6);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .status {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f3f4f6;
+            border-radius: 10px;
+            min-height: 100px;
+            text-align: left;
+        }
+        
+        .status-item {
+            padding: 8px 0;
+            color: #333;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        
+        .status-item.success {
+            color: #10b981;
+        }
+        
+        .status-item.error {
+            color: #ef4444;
+        }
+        
+        .preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .preview-item {
+            text-align: center;
+        }
+        
+        .preview-item img {
+            width: 80px;
+            height: 80px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            margin-bottom: 5px;
+        }
+        
+        .preview-item span {
+            display: block;
+            font-size: 0.85em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Gerador de Ícones PWA</h1>
+        <p class="subtitle">Gere todos os ícones necessários com um clique!</p>
+        
+        <button class="btn" onclick="gerarTodos()">
+            🚀 Gerar Todos os Ícones
+        </button>
+        
+        <button class="btn" onclick="gerarIndividual()">
+            📦 Gerar Individual
+        </button>
+        
+        <div class="status" id="status">
+            <div class="status-item">Clique no botão para começar...</div>
+        </div>
+        
+        <div class="preview-grid" id="previews"></div>
+    </div>
+    
+    <script>
+        const sizes = [32, 72, 96, 128, 144, 152, 192, 384, 512];
+        
+        function gerarIcone(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Cores
+            const bgDark1 = { r: 31, g: 41, b: 55 };
+            const bgDark2 = { r: 55, g: 65, b: 81 };
+            const primary = '#10b981';
+            const primaryDark = '#059669';
+            const primaryLight = '#34d399';
+            const primaryDarker = '#047857';
+            
+            // Fundo gradiente
+            for (let y = 0; y < size; y++) {
+                const ratio = y / size;
+                const r = Math.round(bgDark1.r + ratio * (bgDark2.r - bgDark1.r));
+                const g = Math.round(bgDark1.g + ratio * (bgDark2.g - bgDark1.g));
+                const b = Math.round(bgDark1.b + ratio * (bgDark2.b - bgDark1.b));
+                ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                ctx.fillRect(0, y, size, 1);
+            }
+            
+            // Tamanhos para o ícone
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const iconSize = size * 0.5;
+            const boxSize = iconSize * 0.6;
+            const boxX = centerX - boxSize / 2;
+            const boxY = centerY - boxSize / 2;
+            const offset = boxSize * 0.15;
+            
+            // Sombra
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(boxX + offset, boxY + offset, boxSize, boxSize);
+            
+            // Face frontal
+            ctx.fillStyle = primary;
+            ctx.strokeStyle = primaryDark;
+            ctx.lineWidth = Math.max(1, size * 0.015);
+            ctx.fillRect(boxX, boxY, boxSize, boxSize);
+            ctx.strokeRect(boxX, boxY, boxSize, boxSize);
+            
+            // Face superior
+            ctx.fillStyle = primaryLight;
+            ctx.beginPath();
+            ctx.moveTo(boxX, boxY);
+            ctx.lineTo(boxX + offset, boxY - offset);
+            ctx.lineTo(boxX + offset + boxSize, boxY - offset);
+            ctx.lineTo(boxX + boxSize, boxY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Face lateral
+            ctx.fillStyle = primaryDark;
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxSize, boxY);
+            ctx.lineTo(boxX + boxSize + offset, boxY - offset);
+            ctx.lineTo(boxX + boxSize + offset, boxY - offset + boxSize);
+            ctx.lineTo(boxX + boxSize, boxY + boxSize);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = primaryDarker;
+            ctx.stroke();
+            
+            // Linhas divisórias
+            ctx.strokeStyle = primaryDarker;
+            ctx.lineWidth = Math.max(1, size * 0.01);
+            
+            // Linha horizontal superior
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxSize * 0.5, boxY);
+            ctx.lineTo(boxX + boxSize * 0.5 + offset, boxY - offset);
+            ctx.stroke();
+            
+            // Linha horizontal inferior
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxSize * 0.5, boxY + boxSize);
+            ctx.lineTo(boxX + boxSize * 0.5 + offset, boxY - offset + boxSize);
+            ctx.stroke();
+            
+            // Linha vertical divisória
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxSize * 0.5, boxY);
+            ctx.lineTo(boxX + boxSize * 0.5, boxY + boxSize);
+            ctx.stroke();
+            
+            return canvas;
+        }
+        
+        function baixar(canvas, filename) {
+            canvas.toBlob(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+        
+        function adicionarStatus(mensagem, tipo = '') {
+            const status = document.getElementById('status');
+            const item = document.createElement('div');
+            item.className = `status-item ${tipo}`;
+            item.textContent = mensagem;
+            status.appendChild(item);
+            status.scrollTop = status.scrollHeight;
+        }
+        
+        function adicionarPreview(canvas, size) {
+            const previews = document.getElementById('previews');
+            const item = document.createElement('div');
+            item.className = 'preview-item';
+            const img = document.createElement('img');
+            img.src = canvas.toDataURL();
+            item.appendChild(img);
+            const span = document.createElement('span');
+            span.textContent = size === 32 ? 'favicon.png' : `icon-${size}x${size}.png`;
+            item.appendChild(span);
+            previews.appendChild(item);
+        }
+        
+        function gerarTodos() {
+            document.getElementById('status').innerHTML = '';
+            document.getElementById('previews').innerHTML = '';
+            
+            adicionarStatus('🎨 Iniciando geração de ícones...');
+            
+            sizes.forEach((size, index) => {
+                setTimeout(() => {
+                    try {
+                        const canvas = gerarIcone(size);
+                        const filename = size === 32 
+                            ? 'favicon.png' 
+                            : `icon-${size}x${size}.png`;
+                        
+                        baixar(canvas, filename);
+                        adicionarPreview(canvas, size);
+                        adicionarStatus(`✅ ${filename} gerado e baixado`, 'success');
+                    } catch (error) {
+                        adicionarStatus(`❌ Erro ao gerar ${size}x${size}: ${error.message}`, 'error');
+                    }
+                }, index * 300);
+            });
+            
+            setTimeout(() => {
+                adicionarStatus('', '');
+                adicionarStatus('✨ Concluído! Todos os ícones foram gerados.', 'success');
+                adicionarStatus('📁 Mova os arquivos baixados para: public/images/', '');
+            }, sizes.length * 300 + 500);
+        }
+        
+        function gerarIndividual() {
+            const size = prompt('Digite o tamanho do ícone (32, 72, 96, 128, 144, 152, 192, 384, 512):');
+            if (!size || !sizes.includes(parseInt(size))) {
+                alert('Tamanho inválido! Use um dos tamanhos: 32, 72, 96, 128, 144, 152, 192, 384, 512');
+                return;
+            }
+            
+            try {
+                const canvas = gerarIcone(parseInt(size));
+                const filename = parseInt(size) === 32 
+                    ? 'favicon.png' 
+                    : `icon-${size}x${size}.png`;
+                baixar(canvas, filename);
+                alert(`✅ Ícone ${filename} gerado e baixado!`);
+            } catch (error) {
+                alert(`❌ Erro: ${error.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
+

@@ -38,6 +38,9 @@ Route::prefix('financial-schedule')->name('financial-schedule.')->middleware('au
 // Rotas de Objetivos
 Route::resource('goals', \App\Http\Controllers\GoalController::class)->middleware('auth');
 
+// Rotas de Sabedoria (Livros)
+Route::resource('books', \App\Http\Controllers\BookController::class)->middleware('auth');
+
 // Rotas de Categorias
 Route::prefix('categories')->name('categories.')->middleware('auth')->group(function () {
     Route::post('/quick-create', [\App\Http\Controllers\CategoryController::class, 'quickCreate'])->name('quick-create');

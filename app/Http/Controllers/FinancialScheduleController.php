@@ -212,4 +212,95 @@ class FinancialScheduleController extends Controller
         
         return response()->json(['count' => $count]);
     }
+    
+    // ========== API METHODS ==========
+    
+    public function apiIndex()
+    {
+        $schedules = FinancialSchedule::where('user_id', Auth::id())
+            ->with('category')
+            ->orderBy('scheduled_date', 'desc')
+            ->get();
+        
+        return response()->json($schedules);
+    }
+    
+    public function apiStore(Request $request)
+    {
+        $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'amount' => 'required|numeric|min:0.01',
+            'category_id' => 'nullable|exists:categories,id',
+            'goal_category' => 'nullable|in:fixed_expenses,professional_resources,emergency_reserves,leisure,debt_installments',
+            'scheduled_date' => 'nullable|date',
+            'scheduled_day' => 'nullable|integer|min:1|max:31',
+            'recurring_frequency' => 'nullable|in:daily,weekly,biweekly,monthly,quarterly,semiannual,yearly'
+        ]);
+        
+        $data = $request->all();
+        $data['user_id'] = Auth::id();
+        
+        // Determinar se é recorrente
+        $isRecurring = $request->has('scheduled_day') && $request->filled('scheduled_day');
+        if ($isRecurring) {
+            $data['is_recurring'] = true;
+            $data['recurring_frequency'] = $request->recurring_frequency ?? 'monthly';
+            // Calcular próxima data baseado no dia
+            $day = (int) $request->scheduled_day;
+            $now = now();
+            if ($day <= $now->day) {
+                $data['scheduled_date'] = $now->copy()->addMonth()->day($day)->format('Y-m-d');
+            } else {
+                $data['scheduled_date'] = $now->copy()->day($day)->format('Y-m-d');
+            }
+        } else {
+            $data['is_recurring'] = false;
+            $data['scheduled_date'] = $request->scheduled_date ?? now()->format('Y-m-d');
+        }
+        
+        $schedule = FinancialSchedule::create($data);
+        
+        return response()->json($schedule->load('category'), 201);
+    }
+    
+    public function apiUpdate(Request $request, FinancialSchedule $schedule)
+    {
+        // Verificar se o usuário pode editar esta agenda
+        if ($schedule->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Não autorizado'], 403);
+        }
+        
+        $request->validate([
+            'title' => 'sometimes|string|max:255',
+            'description' => 'nullable|string',
+            'amount' => 'sometimes|numeric|min:0.01',
+            'category_id' => 'nullable|exists:categories,id',
+            'goal_category' => 'nullable|in:fixed_expenses,professional_resources,emergency_reserves,leisure,debt_installments',
+            'scheduled_date' => 'sometimes|date',
+            'scheduled_day' => 'nullable|integer|min:1|max:31',
+            'recurring_frequency' => 'nullable|in:daily,weekly,biweekly,monthly,quarterly,semiannual,yearly'
+        ]);
+        
+        $schedule->update($request->all());
+        
+        return response()->json($schedule->load('category'));
+    }
+    
+    public function apiDestroy(FinancialSchedule $schedule)
+    {
+        // Verificar se o usuário pode deletar esta agenda
+        if ($schedule->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Não autorizado'], 403);
+        }
+        
+        // Deletar imagem se houver
+        if ($schedule->image_path && file_exists(storage_path('app/public/' . $schedule->image_path))) {
+            unlink(storage_path('app/public/' . $schedule->image_path));
+        }
+        
+        $schedule->delete();
+        
+        return response()->json(['message' => 'Agenda deletada com sucesso']);
+    }
 }

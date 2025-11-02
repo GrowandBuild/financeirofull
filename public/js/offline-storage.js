@@ -2,7 +2,7 @@
 class OfflineStorage {
     constructor() {
         this.dbName = 'ProdutosAppDB';
-        this.dbVersion = 1;
+        this.dbVersion = 2; // Versão atualizada para incluir CashFlow e Schedule
         this.db = null;
         this.isOnline = navigator.onLine;
         
@@ -34,6 +34,7 @@ class OfflineStorage {
                     const productStore = db.createObjectStore('products', { keyPath: 'id' });
                     productStore.createIndex('name', 'name', { unique: false });
                     productStore.createIndex('category', 'category', { unique: false });
+                    productStore.createIndex('isPending', 'isPending', { unique: false });
                 }
                 
                 // Store para compras
@@ -41,9 +42,34 @@ class OfflineStorage {
                     const purchaseStore = db.createObjectStore('purchases', { keyPath: 'id' });
                     purchaseStore.createIndex('product_id', 'product_id', { unique: false });
                     purchaseStore.createIndex('date', 'purchase_date', { unique: false });
+                    purchaseStore.createIndex('isPending', 'isPending', { unique: false });
                 }
                 
-                // Store para dados pendentes de sincronização
+                // Store para transações financeiras (CashFlow)
+                if (!db.objectStoreNames.contains('cashflows')) {
+                    const cashflowStore = db.createObjectStore('cashflows', { keyPath: 'id' });
+                    cashflowStore.createIndex('type', 'type', { unique: false });
+                    cashflowStore.createIndex('date', 'transaction_date', { unique: false });
+                    cashflowStore.createIndex('isPending', 'isPending', { unique: false });
+                }
+                
+                // Store para agenda financeira (FinancialSchedule)
+                if (!db.objectStoreNames.contains('schedules')) {
+                    const scheduleStore = db.createObjectStore('schedules', { keyPath: 'id' });
+                    scheduleStore.createIndex('date', 'scheduled_date', { unique: false });
+                    scheduleStore.createIndex('isPending', 'isPending', { unique: false });
+                }
+                
+                // Store para fila de sincronização (operações pendentes)
+                if (!db.objectStoreNames.contains('syncQueue')) {
+                    const queueStore = db.createObjectStore('syncQueue', { keyPath: 'id', autoIncrement: true });
+                    queueStore.createIndex('type', 'type', { unique: false });
+                    queueStore.createIndex('operation', 'operation', { unique: false });
+                    queueStore.createIndex('timestamp', 'timestamp', { unique: false });
+                    queueStore.createIndex('status', 'status', { unique: false });
+                }
+                
+                // Store para dados pendentes de sincronização (deprecated, usando syncQueue)
                 if (!db.objectStoreNames.contains('pendingSync')) {
                     const pendingStore = db.createObjectStore('pendingSync', { keyPath: 'id', autoIncrement: true });
                     pendingStore.createIndex('type', 'type', { unique: false });
@@ -75,13 +101,22 @@ class OfflineStorage {
     async saveProduct(product) {
         if (this.isOnline) {
             try {
-                return await this.syncToServer('POST', '/api/products', product);
+                const response = await this.syncToServer('POST', '/api/products', product);
+                // Salvar também localmente para cache
+                await this.saveProductOffline(response);
+                return response;
             } catch (error) {
-                console.log('Erro ao salvar online, salvando localmente:', error);
-                return await this.saveProductOffline(product);
+                console.log('Erro ao salvar online, salvando localmente e adicionando à fila:', error);
+                const saved = await this.saveProductOffline(product);
+                // Adicionar à fila de sincronização
+                await this.addToSyncQueue('product', 'create', saved);
+                return saved;
             }
         } else {
-            return await this.saveProductOffline(product);
+            const saved = await this.saveProductOffline(product);
+            // Adicionar à fila de sincronização
+            await this.addToSyncQueue('product', 'create', saved);
+            return saved;
         }
     }
     
@@ -127,13 +162,22 @@ class OfflineStorage {
     async savePurchase(purchase) {
         if (this.isOnline) {
             try {
-                return await this.syncToServer('POST', '/api/purchases', purchase);
+                const response = await this.syncToServer('POST', '/api/purchases', purchase);
+                // Salvar também localmente para cache
+                await this.savePurchaseOffline(response);
+                return response;
             } catch (error) {
-                console.log('Erro ao salvar compra online, salvando localmente:', error);
-                return await this.savePurchaseOffline(purchase);
+                console.log('Erro ao salvar compra online, salvando localmente e adicionando à fila:', error);
+                const saved = await this.savePurchaseOffline(purchase);
+                // Adicionar à fila de sincronização
+                await this.addToSyncQueue('purchase', 'create', saved);
+                return saved;
             }
         } else {
-            return await this.savePurchaseOffline(purchase);
+            const saved = await this.savePurchaseOffline(purchase);
+            // Adicionar à fila de sincronização
+            await this.addToSyncQueue('purchase', 'create', saved);
+            return saved;
         }
     }
     
@@ -173,6 +217,111 @@ class OfflineStorage {
         });
     }
     
+    // ========== FILA DE SINCRONIZAÇÃO ==========
+    
+    // Adicionar operação à fila de sincronização
+    async addToSyncQueue(type, operation, data) {
+        const transaction = this.db.transaction(['syncQueue'], 'readwrite');
+        const store = transaction.objectStore('syncQueue');
+        
+        const queueItem = {
+            type: type, // 'product', 'purchase', 'cashflow', 'schedule'
+            operation: operation, // 'create', 'update', 'delete'
+            data: data,
+            timestamp: Date.now(),
+            status: 'pending',
+            retries: 0
+        };
+        
+        return new Promise((resolve, reject) => {
+            const request = store.add(queueItem);
+            request.onsuccess = () => {
+                console.log(`Operação ${operation} de ${type} adicionada à fila`);
+                resolve(request.result);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+    
+    // Processar fila de sincronização
+    async processSyncQueue() {
+        if (!this.isOnline) {
+            console.log('Offline - não é possível processar fila');
+            return;
+        }
+        
+        const transaction = this.db.transaction(['syncQueue'], 'readwrite');
+        const store = transaction.objectStore('syncQueue');
+        
+        return new Promise((resolve, reject) => {
+            const request = store.index('status').getAll('pending');
+            request.onsuccess = async () => {
+                const queueItems = request.result;
+                console.log(`Processando ${queueItems.length} itens na fila de sincronização...`);
+                
+                for (const item of queueItems) {
+                    try {
+                        await this.processQueueItem(item);
+                    } catch (error) {
+                        console.error(`Erro ao processar item da fila:`, error);
+                        // Incrementar retries
+                        item.retries++;
+                        if (item.retries < 3) {
+                            // Tentar novamente depois
+                            store.put(item);
+                        } else {
+                            // Marcar como erro após 3 tentativas
+                            item.status = 'error';
+                            store.put(item);
+                        }
+                    }
+                }
+                
+                console.log('Fila de sincronização processada');
+                resolve();
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+    
+    // Processar item individual da fila
+    async processQueueItem(item) {
+        const transaction = this.db.transaction(['syncQueue'], 'readwrite');
+        const store = transaction.objectStore('syncQueue');
+        
+        try {
+            let response;
+            
+            switch (item.type) {
+                case 'product':
+                    response = await this.syncProductOperation(item.operation, item.data);
+                    break;
+                case 'purchase':
+                    response = await this.syncPurchaseOperation(item.operation, item.data);
+                    break;
+                case 'cashflow':
+                    response = await this.syncCashFlowOperation(item.operation, item.data);
+                    break;
+                case 'schedule':
+                    response = await this.syncScheduleOperation(item.operation, item.data);
+                    break;
+                default:
+                    throw new Error(`Tipo desconhecido: ${item.type}`);
+            }
+            
+            // Marcar como concluído
+            item.status = 'completed';
+            item.syncedAt = Date.now();
+            item.serverId = response.id;
+            store.put(item);
+            
+            console.log(`${item.type} ${item.operation} sincronizado com sucesso`);
+            
+        } catch (error) {
+            throw error;
+        }
+    }
+    
     // ========== SINCRONIZAÇÃO ==========
     
     // Sincronizar dados pendentes
@@ -183,17 +332,28 @@ class OfflineStorage {
         }
         
         try {
-            console.log('Iniciando sincronização de dados pendentes...');
+            console.log('Iniciando sincronização completa de dados pendentes...');
             
-            // Sincronizar produtos pendentes
+            // Processar fila de sincronização primeiro
+            await this.processSyncQueue();
+            
+            // Sincronizar produtos pendentes (legado)
             await this.syncPendingProducts();
             
-            // Sincronizar compras pendentes
+            // Sincronizar compras pendentes (legado)
             await this.syncPendingPurchases();
             
-            console.log('Sincronização concluída');
+            // Sincronizar transações financeiras pendentes
+            await this.syncPendingCashFlows();
+            
+            // Sincronizar agenda pendente
+            await this.syncPendingSchedules();
+            
+            console.log('Sincronização completa concluída');
+            this.showSyncNotification('Sincronização concluída com sucesso!');
         } catch (error) {
             console.error('Erro na sincronização:', error);
+            this.showSyncNotification('Erro na sincronização. Alguns dados podem não ter sido sincronizados.', 'error');
         }
     }
     
@@ -289,6 +449,270 @@ class OfflineStorage {
         });
     }
     
+    // ========== TRANSAÇÕES FINANCEIRAS (CASHFLOW) ==========
+    
+    // Salvar transação financeira
+    async saveCashFlow(cashflow) {
+        if (this.isOnline) {
+            try {
+                const response = await this.syncToServer('POST', '/api/cashflows', cashflow);
+                await this.saveCashFlowOffline(response);
+                return response;
+            } catch (error) {
+                console.log('Erro ao salvar transação online, salvando localmente e adicionando à fila:', error);
+                const saved = await this.saveCashFlowOffline(cashflow);
+                await this.addToSyncQueue('cashflow', 'create', saved);
+                return saved;
+            }
+        } else {
+            const saved = await this.saveCashFlowOffline(cashflow);
+            await this.addToSyncQueue('cashflow', 'create', saved);
+            return saved;
+        }
+    }
+    
+    // Salvar transação financeira offline
+    async saveCashFlowOffline(cashflow) {
+        const transaction = this.db.transaction(['cashflows'], 'readwrite');
+        const store = transaction.objectStore('cashflows');
+        
+        if (!cashflow.id) {
+            cashflow.id = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            cashflow.isPending = true;
+        }
+        
+        return new Promise((resolve, reject) => {
+            const request = store.put(cashflow);
+            request.onsuccess = () => {
+                console.log('Transação financeira salva offline:', cashflow.id);
+                resolve(cashflow);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+    
+    // Buscar transações financeiras
+    async getCashFlows() {
+        const transaction = this.db.transaction(['cashflows'], 'readonly');
+        const store = transaction.objectStore('cashflows');
+        
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => {
+                console.log('Transações financeiras carregadas do cache:', request.result.length);
+                resolve(request.result);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+    
+    // ========== AGENDA FINANCEIRA (SCHEDULE) ==========
+    
+    // Salvar agenda financeira
+    async saveSchedule(schedule) {
+        if (this.isOnline) {
+            try {
+                const response = await this.syncToServer('POST', '/api/schedules', schedule);
+                await this.saveScheduleOffline(response);
+                return response;
+            } catch (error) {
+                console.log('Erro ao salvar agenda online, salvando localmente e adicionando à fila:', error);
+                const saved = await this.saveScheduleOffline(schedule);
+                await this.addToSyncQueue('schedule', 'create', saved);
+                return saved;
+            }
+        } else {
+            const saved = await this.saveScheduleOffline(schedule);
+            await this.addToSyncQueue('schedule', 'create', saved);
+            return saved;
+        }
+    }
+    
+    // Salvar agenda offline
+    async saveScheduleOffline(schedule) {
+        const transaction = this.db.transaction(['schedules'], 'readwrite');
+        const store = transaction.objectStore('schedules');
+        
+        if (!schedule.id) {
+            schedule.id = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+            schedule.isPending = true;
+        }
+        
+        return new Promise((resolve, reject) => {
+            const request = store.put(schedule);
+            request.onsuccess = () => {
+                console.log('Agenda salva offline:', schedule.id);
+                resolve(schedule);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+    
+    // Buscar agenda
+    async getSchedules() {
+        const transaction = this.db.transaction(['schedules'], 'readonly');
+        const store = transaction.objectStore('schedules');
+        
+        return new Promise((resolve, reject) => {
+            const request = store.getAll();
+            request.onsuccess = () => {
+                console.log('Agenda carregada do cache:', request.result.length);
+                resolve(request.result);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+    
+    // ========== OPERAÇÕES DE SINCRONIZAÇÃO ==========
+    
+    // Sincronizar operação de produto
+    async syncProductOperation(operation, data) {
+        switch (operation) {
+            case 'create':
+                return await this.syncToServer('POST', '/api/products', data);
+            case 'update':
+                return await this.syncToServer('PUT', `/api/products/${data.id}`, data);
+            case 'delete':
+                return await this.syncToServer('DELETE', `/api/products/${data.id}`, {});
+            default:
+                throw new Error(`Operação desconhecida: ${operation}`);
+        }
+    }
+    
+    // Sincronizar operação de compra
+    async syncPurchaseOperation(operation, data) {
+        switch (operation) {
+            case 'create':
+                return await this.syncToServer('POST', '/api/purchases', data);
+            case 'update':
+                return await this.syncToServer('PUT', `/api/purchases/${data.id}`, data);
+            case 'delete':
+                return await this.syncToServer('DELETE', `/api/purchases/${data.id}`, {});
+            default:
+                throw new Error(`Operação desconhecida: ${operation}`);
+        }
+    }
+    
+    // Sincronizar operação de transação financeira
+    async syncCashFlowOperation(operation, data) {
+        switch (operation) {
+            case 'create':
+                return await this.syncToServer('POST', '/api/cashflows', data);
+            case 'update':
+                return await this.syncToServer('PUT', `/api/cashflows/${data.id}`, data);
+            case 'delete':
+                return await this.syncToServer('DELETE', `/api/cashflows/${data.id}`, {});
+            default:
+                throw new Error(`Operação desconhecida: ${operation}`);
+        }
+    }
+    
+    // Sincronizar operação de agenda
+    async syncScheduleOperation(operation, data) {
+        switch (operation) {
+            case 'create':
+                return await this.syncToServer('POST', '/api/schedules', data);
+            case 'update':
+                return await this.syncToServer('PUT', `/api/schedules/${data.id}`, data);
+            case 'delete':
+                return await this.syncToServer('DELETE', `/api/schedules/${data.id}`, {});
+            default:
+                throw new Error(`Operação desconhecida: ${operation}`);
+        }
+    }
+    
+    // Sincronizar transações financeiras pendentes
+    async syncPendingCashFlows() {
+        const cashflows = await this.getCashFlows();
+        const pendingCashFlows = cashflows.filter(cf => cf.isPending);
+        
+        for (const cashflow of pendingCashFlows) {
+            try {
+                const response = await this.syncToServer('POST', '/api/cashflows', cashflow);
+                
+                // Atualizar transação local com ID real
+                await this.updateCashFlowId(cashflow.id, response.id);
+                
+                console.log('Transação financeira sincronizada:', cashflow.id);
+            } catch (error) {
+                console.error('Erro ao sincronizar transação financeira:', cashflow.id, error);
+            }
+        }
+    }
+    
+    // Sincronizar agenda pendente
+    async syncPendingSchedules() {
+        const schedules = await this.getSchedules();
+        const pendingSchedules = schedules.filter(s => s.isPending);
+        
+        for (const schedule of pendingSchedules) {
+            try {
+                const response = await this.syncToServer('POST', '/api/schedules', schedule);
+                
+                // Atualizar agenda local com ID real
+                await this.updateScheduleId(schedule.id, response.id);
+                
+                console.log('Agenda sincronizada:', schedule.id);
+            } catch (error) {
+                console.error('Erro ao sincronizar agenda:', schedule.id, error);
+            }
+        }
+    }
+    
+    // Atualizar ID da transação financeira após sincronização
+    async updateCashFlowId(oldId, newId) {
+        const transaction = this.db.transaction(['cashflows'], 'readwrite');
+        const store = transaction.objectStore('cashflows');
+        
+        return new Promise((resolve, reject) => {
+            const getRequest = store.get(oldId);
+            getRequest.onsuccess = () => {
+                const cashflow = getRequest.result;
+                if (cashflow) {
+                    cashflow.id = newId;
+                    cashflow.isPending = false;
+                    
+                    const putRequest = store.put(cashflow);
+                    putRequest.onsuccess = () => {
+                        store.delete(oldId);
+                        resolve();
+                    };
+                    putRequest.onerror = () => reject(putRequest.error);
+                } else {
+                    resolve();
+                }
+            };
+            getRequest.onerror = () => reject(getRequest.error);
+        });
+    }
+    
+    // Atualizar ID da agenda após sincronização
+    async updateScheduleId(oldId, newId) {
+        const transaction = this.db.transaction(['schedules'], 'readwrite');
+        const store = transaction.objectStore('schedules');
+        
+        return new Promise((resolve, reject) => {
+            const getRequest = store.get(oldId);
+            getRequest.onsuccess = () => {
+                const schedule = getRequest.result;
+                if (schedule) {
+                    schedule.id = newId;
+                    schedule.isPending = false;
+                    
+                    const putRequest = store.put(schedule);
+                    putRequest.onsuccess = () => {
+                        store.delete(oldId);
+                        resolve();
+                    };
+                    putRequest.onerror = () => reject(putRequest.error);
+                } else {
+                    resolve();
+                }
+            };
+            getRequest.onerror = () => reject(getRequest.error);
+        });
+    }
+    
     // ========== COMUNICAÇÃO COM SERVIDOR ==========
     
     // Sincronizar com servidor
@@ -297,13 +721,20 @@ class OfflineStorage {
             method: method,
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                'Accept': 'application/json'
             },
-            body: JSON.stringify(data)
+            body: method !== 'DELETE' ? JSON.stringify(data) : undefined
         });
         
         if (!response.ok) {
-            throw new Error(`Erro HTTP: ${response.status}`);
+            const errorData = await response.json().catch(() => ({ message: 'Erro desconhecido' }));
+            throw new Error(`Erro HTTP ${response.status}: ${errorData.message || response.statusText}`);
+        }
+        
+        // Para DELETE, retornar um objeto com id
+        if (method === 'DELETE') {
+            return { id: data.id, deleted: true };
         }
         
         return await response.json();
@@ -316,21 +747,68 @@ class OfflineStorage {
         return this.isOnline;
     }
     
+    // Mostrar notificação de sincronização
+    showSyncNotification(message, type = 'success') {
+        // Criar elemento de notificação
+        const notification = document.createElement('div');
+        notification.className = `sync-notification ${type}`;
+        notification.style.cssText = `
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: ${type === 'success' ? '#10b981' : '#ef4444'};
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 9999;
+            animation: slideIn 0.3s ease;
+            max-width: 300px;
+        `;
+        notification.textContent = message;
+        
+        // Adicionar animação CSS se não existir
+        if (!document.querySelector('#sync-notification-style')) {
+            const style = document.createElement('style');
+            style.id = 'sync-notification-style';
+            style.textContent = `
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(notification);
+        
+        // Remover após 3 segundos
+        setTimeout(() => {
+            notification.style.animation = 'slideOut 0.3s ease';
+            setTimeout(() => {
+                document.body.removeChild(notification);
+            }, 300);
+        }, 3000);
+    }
+    
     // Limpar cache
     async clearCache() {
-        const transaction = this.db.transaction(['products', 'purchases', 'pendingSync'], 'readwrite');
+        const stores = ['products', 'purchases', 'cashflows', 'schedules', 'syncQueue', 'pendingSync'];
+        const transaction = this.db.transaction(stores, 'readwrite');
         
-        await Promise.all([
-            new Promise((resolve) => {
-                transaction.objectStore('products').clear().onsuccess = resolve;
-            }),
-            new Promise((resolve) => {
-                transaction.objectStore('purchases').clear().onsuccess = resolve;
-            }),
-            new Promise((resolve) => {
-                transaction.objectStore('pendingSync').clear().onsuccess = resolve;
-            })
-        ]);
+        await Promise.all(
+            stores.map(storeName => 
+                new Promise((resolve) => {
+                    transaction.objectStore(storeName).clear().onsuccess = resolve;
+                })
+            )
+        );
         
         console.log('Cache limpo');
     }

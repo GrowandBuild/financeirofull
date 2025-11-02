@@ -506,6 +506,7 @@ const App = {
         LazyImageLoader.init();
         ErrorHandler.init();
         PerformanceOptimizer.init();
+        HamburgerMenuManager.init();
         
         // Service Worker desabilitado - remover cache personalizado
         // ServiceWorkerManager.register();
@@ -579,12 +580,84 @@ function toggleDevModeSimple() {
     }
 }
 
+// Hamburger Menu Manager
+const HamburgerMenuManager = {
+    isOpen: false,
+    
+    init() {
+        // Fechar menu ao clicar fora ou ao pressionar ESC
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.isOpen) {
+                this.close();
+            }
+        });
+        
+        // Fechar menu ao clicar em um link
+        const menuItems = document.querySelectorAll('.hamburger-menu-item');
+        menuItems.forEach(item => {
+            item.addEventListener('click', () => {
+                setTimeout(() => this.close(), 200);
+            });
+        });
+    },
+    
+    toggle() {
+        if (this.isOpen) {
+            this.close();
+        } else {
+            this.open();
+        }
+    },
+    
+    open() {
+        const menu = document.getElementById('hamburgerMenu');
+        const panel = document.getElementById('hamburgerMenuPanel');
+        const overlay = document.getElementById('hamburgerOverlay');
+        
+        if (menu && panel && overlay) {
+            menu.classList.add('active');
+            panel.classList.add('active');
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            this.isOpen = true;
+        }
+    },
+    
+    close() {
+        const menu = document.getElementById('hamburgerMenu');
+        const panel = document.getElementById('hamburgerMenuPanel');
+        const overlay = document.getElementById('hamburgerOverlay');
+        
+        if (menu && panel && overlay) {
+            menu.classList.remove('active');
+            panel.classList.remove('active');
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+            this.isOpen = false;
+        }
+    }
+};
+
+// Função global para toggle do menu
+function toggleHamburgerMenu() {
+    HamburgerMenuManager.toggle();
+}
+
 // Exportar para uso global se necessário
 window.MeusProdutos = {
     App,
     CacheManager,
     PerformanceMonitor,
     SearchManager,
+    HamburgerMenuManager,
     clearAllCachesSimple,
-    toggleDevModeSimple
+    toggleDevModeSimple,
+    toggleHamburgerMenu
 };
+
+// Inicializar menu hambúrguer
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => HamburgerMenuManager.init());
+} else {
+    HamburgerMenuManager.init();
+}

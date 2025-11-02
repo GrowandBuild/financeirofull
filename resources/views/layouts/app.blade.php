@@ -2,8 +2,31 @@
 <html lang="pt-BR">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        
+        <!-- PWA Meta Tags -->
+        <meta name="theme-color" content="#10b981">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="Meus Produtos">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="msapplication-TileColor" content="#10b981">
+        <meta name="msapplication-TileImage" content="{{ asset('images/icon-192x192.png') }}">
+        
+        <!-- Favicon e Apple Touch Icons -->
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon.png') }}">
+        <link rel="apple-touch-icon" sizes="72x72" href="{{ asset('images/icon-72x72.png') }}">
+        <link rel="apple-touch-icon" sizes="96x96" href="{{ asset('images/icon-96x96.png') }}">
+        <link rel="apple-touch-icon" sizes="128x128" href="{{ asset('images/icon-128x128.png') }}">
+        <link rel="apple-touch-icon" sizes="144x144" href="{{ asset('images/icon-144x144.png') }}">
+        <link rel="apple-touch-icon" sizes="152x152" href="{{ asset('images/icon-152x152.png') }}">
+        <link rel="apple-touch-icon" sizes="192x192" href="{{ asset('images/icon-192x192.png') }}">
+        <link rel="apple-touch-icon" sizes="384x384" href="{{ asset('images/icon-384x384.png') }}">
+        <link rel="apple-touch-icon" sizes="512x512" href="{{ asset('images/icon-512x512.png') }}">
+        
+        <!-- Manifest PWA -->
+        <link rel="manifest" href="{{ asset('manifest.json') }}">
 
         <title>{{ config('app.name', 'Laravel') }} - @yield('title', 'Meus Produtos')</title>
         
@@ -42,33 +65,12 @@
 <body>
     <!-- Switcher de Sistemas -->
     <div class="system-switcher">
-        <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <a href="{{ route('products.index') }}" class="btn {{ request()->routeIs('products.*') ? 'active' : '' }}">
-                <i class="bi bi-box-seam"></i> Produtos
-            </a>
-            <a href="{{ route('cashflow.dashboard') }}" class="btn {{ request()->routeIs('cashflow.*') ? 'active' : '' }}">
-                <i class="bi bi-cash-coin"></i> Fluxo de Caixa
-            </a>
-            @auth
-            <a href="{{ route('financial-schedule.index') }}" class="btn {{ request()->routeIs('financial-schedule.*') ? 'active' : '' }}" style="position: relative;">
-                <i class="bi bi-calendar-event"></i> Agenda
-                @php
-                    $notificationCount = \App\Models\FinancialSchedule::where('user_id', auth()->id())
-                        ->where('is_confirmed', false)
-                        ->where('scheduled_date', '<=', now()->addDays(7))
-                        ->count();
-                @endphp
-                @if($notificationCount > 0)
-                <span class="badge bg-danger" style="position: absolute; top: -5px; right: -5px; border-radius: 50%; min-width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 10px;">
-                    {{ $notificationCount }}
-                </span>
-                @endif
-            </a>
-            <a href="{{ route('goals.index') }}" class="btn {{ request()->routeIs('goals.*') ? 'active' : '' }}">
-                <i class="bi bi-graph-up"></i> Monitoramento
-            </a>
-            @endauth
-        </div>
+        <!-- Menu Hambúrguer -->
+        <button class="hamburger-menu" id="hamburgerMenu" onclick="toggleHamburgerMenu()">
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+        </button>
         
         <!-- Total Mensal e Status -->
         <div class="monthly-info">
@@ -105,6 +107,75 @@
             <div id="online-status" class="online-indicator">
                 <i class="bi bi-wifi"></i> Online
             </div>
+        </div>
+    </div>
+    
+    <!-- Menu Lateral (Offcanvas) -->
+    <div class="hamburger-overlay" id="hamburgerOverlay" onclick="toggleHamburgerMenu()"></div>
+    <div class="hamburger-menu-panel" id="hamburgerMenuPanel">
+        <div class="hamburger-header">
+            <h3>Departamentos</h3>
+            <button class="hamburger-close" onclick="toggleHamburgerMenu()">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="hamburger-content">
+            <a href="{{ route('products.index') }}" class="hamburger-menu-item {{ request()->routeIs('products.*') ? 'active' : '' }}">
+                <div class="menu-item-icon">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <div class="menu-item-content">
+                    <span class="menu-item-title">Produtos</span>
+                    <span class="menu-item-subtitle">Gerenciar produtos</span>
+                </div>
+            </a>
+            <a href="{{ route('cashflow.dashboard') }}" class="hamburger-menu-item {{ request()->routeIs('cashflow.*') ? 'active' : '' }}">
+                <div class="menu-item-icon">
+                    <i class="bi bi-cash-coin"></i>
+                </div>
+                <div class="menu-item-content">
+                    <span class="menu-item-title">Fluxo de Caixa</span>
+                    <span class="menu-item-subtitle">Controle financeiro</span>
+                </div>
+            </a>
+            @auth
+            <a href="{{ route('financial-schedule.index') }}" class="hamburger-menu-item {{ request()->routeIs('financial-schedule.*') ? 'active' : '' }}">
+                <div class="menu-item-icon">
+                    <i class="bi bi-calendar-event"></i>
+                    @php
+                        $notificationCount = \App\Models\FinancialSchedule::where('user_id', auth()->id())
+                            ->where('is_confirmed', false)
+                            ->where('scheduled_date', '<=', now()->addDays(7))
+                            ->count();
+                    @endphp
+                    @if($notificationCount > 0)
+                    <span class="menu-badge">{{ $notificationCount }}</span>
+                    @endif
+                </div>
+                <div class="menu-item-content">
+                    <span class="menu-item-title">Agenda</span>
+                    <span class="menu-item-subtitle">Lembretes e eventos</span>
+                </div>
+            </a>
+            <a href="{{ route('goals.index') }}" class="hamburger-menu-item {{ request()->routeIs('goals.*') ? 'active' : '' }}">
+                <div class="menu-item-icon">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div class="menu-item-content">
+                    <span class="menu-item-title">Monitoramento</span>
+                    <span class="menu-item-subtitle">Objetivos e metas</span>
+                </div>
+            </a>
+            <a href="{{ route('books.index') }}" class="hamburger-menu-item {{ request()->routeIs('books.*') ? 'active' : '' }}">
+                <div class="menu-item-icon">
+                    <i class="bi bi-book"></i>
+                </div>
+                <div class="menu-item-content">
+                    <span class="menu-item-title">Sabedoria</span>
+                    <span class="menu-item-subtitle">Livros e textos</span>
+                </div>
+            </a>
+            @endauth
         </div>
     </div>
     
@@ -163,6 +234,94 @@
     
     <!-- Bootstrap 5.3 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- PWA Service Worker Registration -->
+    <script>
+        // Registrar Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('/sw.js');
+                    console.log('Service Worker registrado:', registration.scope);
+                    
+                    // Verificar atualizações
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // Nova versão disponível
+                                if (confirm('Nova versão disponível! Deseja atualizar?')) {
+                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                    window.location.reload();
+                                }
+                            }
+                        });
+                    });
+                } catch (error) {
+                    console.error('Erro ao registrar Service Worker:', error);
+                }
+            });
+        }
+        
+        // Detectar quando o app pode ser instalado (PWA Install Prompt)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Mostrar botão de instalação (opcional)
+            showInstallButton();
+        });
+        
+        function showInstallButton() {
+            // Criar botão de instalação se não existir
+            if (!document.getElementById('install-button')) {
+                const installBtn = document.createElement('button');
+                installBtn.id = 'install-button';
+                installBtn.innerHTML = '<i class="bi bi-download"></i> Instalar App';
+                installBtn.style.cssText = `
+                    position: fixed;
+                    bottom: 80px;
+                    right: 20px;
+                    background: #10b981;
+                    color: white;
+                    border: none;
+                    padding: 12px 20px;
+                    border-radius: 25px;
+                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+                    cursor: pointer;
+                    z-index: 9999;
+                    font-weight: 600;
+                    transition: all 0.3s;
+                `;
+                installBtn.onclick = async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const { outcome } = await deferredPrompt.userChoice;
+                        console.log(`Instalação: ${outcome}`);
+                        deferredPrompt = null;
+                        installBtn.remove();
+                    }
+                };
+                installBtn.onmouseover = () => {
+                    installBtn.style.background = '#059669';
+                };
+                installBtn.onmouseout = () => {
+                    installBtn.style.background = '#10b981';
+                };
+                document.body.appendChild(installBtn);
+            }
+        }
+        
+        // Quando o app é instalado
+        window.addEventListener('appinstalled', () => {
+            console.log('App instalado com sucesso!');
+            const installBtn = document.getElementById('install-button');
+            if (installBtn) {
+                installBtn.remove();
+            }
+        });
+    </script>
     
     @yield('scripts')
     @stack('scripts')

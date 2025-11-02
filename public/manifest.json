@@ -1,21 +1,93 @@
 {
-    "name": "Meus Produtos",
-    "short_name": "Produtos",
-    "description": "Sistema de gest\u00e3o de produtos",
-    "start_url": "\/",
+    "name": "Sistema de Gestão de Produtos",
+    "short_name": "Meus Produtos",
+    "description": "Sistema completo de gestão de produtos, compras e controle financeiro",
+    "start_url": "/",
+    "scope": "/",
     "display": "standalone",
+    "orientation": "portrait",
     "background_color": "#1f2937",
     "theme_color": "#10b981",
+    "dir": "ltr",
+    "lang": "pt-BR",
+    "categories": ["productivity", "business", "finance"],
     "icons": [
         {
-            "src": "\/images\/icon-192.png",
-            "sizes": "192x192",
-            "type": "image\/png"
+            "src": "/images/icon-72x72.png",
+            "sizes": "72x72",
+            "type": "image/png",
+            "purpose": "any"
         },
         {
-            "src": "\/images\/icon-512.png",
+            "src": "/images/icon-96x96.png",
+            "sizes": "96x96",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/icon-128x128.png",
+            "sizes": "128x128",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/icon-144x144.png",
+            "sizes": "144x144",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/icon-152x152.png",
+            "sizes": "152x152",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/icon-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/images/icon-384x384.png",
+            "sizes": "384x384",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/icon-512x512.png",
             "sizes": "512x512",
-            "type": "image\/png"
+            "type": "image/png",
+            "purpose": "any maskable"
         }
-    ]
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Nova Compra",
+            "short_name": "Comprar",
+            "description": "Registrar nova compra",
+            "url": "/compra",
+            "icons": [
+                {
+                    "src": "/images/icon-192x192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        },
+        {
+            "name": "Fluxo de Caixa",
+            "short_name": "Financeiro",
+            "description": "Visualizar fluxo de caixa",
+            "url": "/cashflow/dashboard",
+            "icons": [
+                {
+                    "src": "/images/icon-192x192.png",
+                    "sizes": "192x192"
+                }
+            ]
+        }
+    ],
+    "related_applications": [],
+    "prefer_related_applications": false
 }

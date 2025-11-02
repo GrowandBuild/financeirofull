@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gerador de Ícones PWA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .icon-preview {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid #ddd;
+            background: white;
+        }
+        .download-btn {
+            display: block;
+            margin-top: 10px;
+            padding: 10px 20px;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .download-btn:hover {
+            background: #059669;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gerador de Ícones PWA</h1>
+    <p>Clique no botão abaixo para gerar e baixar todos os ícones necessários.</p>
+    
+    <button id="generateAll" class="download-btn" style="margin-bottom: 20px;">Gerar Todos os Ícones</button>
+    
+    <div id="previews"></div>
+    
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        
+        function generateIcon(size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            // Fundo gradiente
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#1f2937');
+            gradient.addColorStop(1, '#374151');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Ícone de produto/caixa centralizado
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const iconSize = size * 0.5;
+            
+            // Desenhar caixa/cubo 3D
+            ctx.fillStyle = '#10b981';
+            ctx.strokeStyle = '#059669';
+            ctx.lineWidth = size * 0.02;
+            
+            // Face frontal
+            const boxSize = iconSize * 0.6;
+            const boxX = centerX - boxSize / 2;
+            const boxY = centerY - boxSize / 2;
+            const offset = boxSize * 0.15;
+            
+            // Sombra
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.fillRect(boxX + offset, boxY + offset, boxSize, boxSize);
+            
+            // Face frontal
+            ctx.fillStyle = '#10b981';
+            ctx.fillRect(boxX, boxY, boxSize, boxSize);
+            ctx.strokeStyle = '#059669';
+            ctx.lineWidth = size * 0.015;
+            ctx.strokeRect(boxX, boxY, boxSize, boxSize);
+            
+            // Face superior
+            ctx.fillStyle = '#34d399';
+            ctx.beginPath();
+            ctx.moveTo(boxX, boxY);
+            ctx.lineTo(boxX + offset, boxY - offset);
+            ctx.lineTo(boxX + offset + boxSize, boxY - offset);
+            ctx.lineTo(boxX + boxSize, boxY);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Face lateral
+            ctx.fillStyle = '#059669';
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxSize, boxY);
+            ctx.lineTo(boxX + boxSize + offset, boxY - offset);
+            ctx.lineTo(boxX + boxSize + offset, boxY - offset + boxSize);
+            ctx.lineTo(boxX + boxSize, boxY + boxSize);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            
+            // Linha divisória (para simular caixa)
+            ctx.strokeStyle = '#047857';
+            ctx.lineWidth = size * 0.01;
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxSize * 0.5, boxY);
+            ctx.lineTo(boxX + boxSize * 0.5 + offset, boxY - offset);
+            ctx.stroke();
+            
+            ctx.beginPath();
+            ctx.moveTo(boxX + boxSize * 0.5, boxY + boxSize);
+            ctx.lineTo(boxX + boxSize * 0.5 + offset, boxY - offset + boxSize);
+            ctx.stroke();
+            
+            return canvas;
+        }
+        
+        function downloadCanvas(canvas, filename) {
+            canvas.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+        }
+        
+        function generateAll() {
+            // Limpar previews
+            document.getElementById('previews').innerHTML = '';
+            
+            sizes.forEach((size, index) => {
+                const canvas = generateIcon(size);
+                const filename = `icon-${size}x${size}.png`;
+                
+                // Adicionar preview
+                const preview = document.createElement('div');
+                preview.className = 'icon-preview';
+                const img = document.createElement('img');
+                img.src = canvas.toDataURL();
+                img.style.width = '100px';
+                img.style.height = '100px';
+                img.style.border = '1px solid #ddd';
+                img.style.borderRadius = '8px';
+                preview.appendChild(img);
+                preview.appendChild(document.createElement('br'));
+                preview.appendChild(document.createTextNode(`${size}x${size}`));
+                
+                const btn = document.createElement('button');
+                btn.textContent = 'Baixar';
+                btn.className = 'download-btn';
+                btn.onclick = () => downloadCanvas(canvas, filename);
+                preview.appendChild(btn);
+                
+                document.getElementById('previews').appendChild(preview);
+                
+                // Auto-download após delay
+                setTimeout(() => {
+                    downloadCanvas(canvas, filename);
+                }, index * 500); // Delay entre downloads
+            });
+            
+            // Gerar favicon também
+            setTimeout(() => {
+                const favicon = generateIcon(32);
+                downloadCanvas(favicon, 'favicon.png');
+            }, sizes.length * 500);
+        }
+        
+        document.getElementById('generateAll').addEventListener('click', generateAll);
+    </script>
+</body>
+</html>
+

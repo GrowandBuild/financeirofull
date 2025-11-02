@@ -187,4 +187,78 @@ class CashFlowController extends Controller
         
         return view('cashflow.reports', compact('yearlyData', 'categoryExpenses'));
     }
+    
+    // ========== API METHODS ==========
+    
+    public function apiIndex()
+    {
+        $cashflows = CashFlow::where('user_id', Auth::id())
+            ->with('category')
+            ->orderBy('transaction_date', 'desc')
+            ->get();
+        
+        return response()->json($cashflows);
+    }
+    
+    public function apiStore(Request $request)
+    {
+        $request->validate([
+            'type' => 'required|in:income,expense',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'amount' => 'required|numeric|min:0.01',
+            'category_id' => 'nullable|exists:categories,id',
+            'goal_category' => 'nullable|in:fixed_expenses,professional_resources,emergency_reserves,leisure,debt_installments',
+            'transaction_date' => 'required|date',
+            'payment_method' => 'nullable|in:cash,card,pix,transfer',
+            'reference' => 'nullable|string|max:255',
+            'is_recurring' => 'boolean',
+            'is_confirmed' => 'boolean'
+        ]);
+        
+        $data = $request->all();
+        $data['user_id'] = Auth::id();
+        
+        $cashflow = CashFlow::create($data);
+        
+        return response()->json($cashflow->load('category'), 201);
+    }
+    
+    public function apiUpdate(Request $request, CashFlow $cashflow)
+    {
+        // Verificar se o usuário pode editar esta transação
+        if ($cashflow->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Não autorizado'], 403);
+        }
+        
+        $request->validate([
+            'type' => 'sometimes|in:income,expense',
+            'title' => 'sometimes|string|max:255',
+            'description' => 'nullable|string',
+            'amount' => 'sometimes|numeric|min:0.01',
+            'category_id' => 'nullable|exists:categories,id',
+            'goal_category' => 'nullable|in:fixed_expenses,professional_resources,emergency_reserves,leisure,debt_installments',
+            'transaction_date' => 'sometimes|date',
+            'payment_method' => 'nullable|in:cash,card,pix,transfer',
+            'reference' => 'nullable|string|max:255',
+            'is_recurring' => 'boolean',
+            'is_confirmed' => 'boolean'
+        ]);
+        
+        $cashflow->update($request->all());
+        
+        return response()->json($cashflow->load('category'));
+    }
+    
+    public function apiDestroy(CashFlow $cashflow)
+    {
+        // Verificar se o usuário pode deletar esta transação
+        if ($cashflow->user_id !== Auth::id()) {
+            return response()->json(['error' => 'Não autorizado'], 403);
+        }
+        
+        $cashflow->delete();
+        
+        return response()->json(['message' => 'Transação deletada com sucesso']);
+    }
 }

@@ -2,8 +2,25 @@
 <html lang="pt-BR">
     <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
         <meta name="csrf-token" content="{{ csrf_token() }}">
+        
+        <!-- PWA Meta Tags -->
+        <meta name="theme-color" content="#10b981">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+        <meta name="apple-mobile-web-app-title" content="Meus Produtos">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="msapplication-TileColor" content="#10b981">
+        <meta name="msapplication-TileImage" content="{{ asset('images/icon-192x192.png') }}">
+        
+        <!-- Favicon e Apple Touch Icons -->
+        <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('images/favicon.png') }}">
+        <link rel="apple-touch-icon" sizes="192x192" href="{{ asset('images/icon-192x192.png') }}">
+        <link rel="apple-touch-icon" sizes="512x512" href="{{ asset('images/icon-512x512.png') }}">
+        
+        <!-- Manifest PWA -->
+        <link rel="manifest" href="{{ asset('manifest.json') }}">
 
     <title>{{ config('app.name', 'Laravel') }} - @yield('title', 'Fluxo de Caixa')</title>
     
