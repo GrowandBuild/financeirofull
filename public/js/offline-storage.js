@@ -32,20 +32,55 @@ class OfflineStorage {
     
     // Inicializar IndexedDB
     async init() {
+        // Verificar se IndexedDB está disponível
+        if (!window.indexedDB) {
+            const error = new Error('IndexedDB não está disponível neste navegador');
+            console.error('❌', error.message);
+            return Promise.reject(error);
+        }
+        
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, this.dbVersion);
-            
-            request.onerror = () => {
-                console.error('Erro ao abrir IndexedDB:', request.error);
-                reject(request.error);
-            };
-            
-            request.onsuccess = () => {
-                this.db = request.result;
-                this.initialized = true;
-                console.log('✅ IndexedDB inicializado com sucesso');
-                resolve(this.db);
-            };
+            try {
+                const request = indexedDB.open(this.dbName, this.dbVersion);
+                
+                request.onerror = () => {
+                    const error = request.error || new Error('Erro desconhecido ao abrir IndexedDB');
+                    console.error('❌ Erro ao abrir IndexedDB:', error);
+                    console.error('Erro completo:', {
+                        name: error.name,
+                        message: error.message,
+                        code: error.code
+                    });
+                    reject(error);
+                };
+                
+                request.onblocked = () => {
+                    console.warn('⚠️ IndexedDB bloqueado - pode estar aberto em outra aba');
+                    // Ainda tentar resolver se conseguir
+                    setTimeout(() => {
+                        if (request.result) {
+                            this.db = request.result;
+                            this.initialized = true;
+                            console.log('✅ IndexedDB inicializado após bloqueio');
+                            resolve(this.db);
+                        }
+                    }, 1000);
+                };
+                
+                request.onsuccess = () => {
+                    this.db = request.result;
+                    this.initialized = true;
+                    console.log('✅ IndexedDB inicializado com sucesso');
+                    console.log('📦 Banco:', this.dbName, 'Versão:', this.dbVersion);
+                    console.log('🗃️ Stores disponíveis:', Array.from(this.db.objectStoreNames));
+                    
+                    // Emitir evento global de sucesso
+                    window.dispatchEvent(new CustomEvent('indexeddb-ready', { 
+                        detail: { db: this.db, storage: this } 
+                    }));
+                    
+                    resolve(this.db);
+                };
             
             request.onupgradeneeded = (event) => {
                 const db = event.target.result;
@@ -99,6 +134,10 @@ class OfflineStorage {
                 
                 console.log('Estrutura do IndexedDB criada');
             };
+            } catch (error) {
+                console.error('❌ Erro ao configurar IndexedDB:', error);
+                reject(error);
+            }
         });
     }
     
