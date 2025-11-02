@@ -1,10 +1,11 @@
 // Service Worker para PWA - Sistema de Gestão de Produtos
-const CACHE_NAME = 'produtos-app-v1';
-const RUNTIME_CACHE = 'produtos-runtime-v1';
+const CACHE_NAME = 'produtos-app-v2';
+const RUNTIME_CACHE = 'produtos-runtime-v2';
 
 // Arquivos essenciais para cache
 const CACHE_FILES = [
     '/',
+    '/index.php',
     '/css/app.css',
     '/js/app.js',
     '/js/offline-storage.js',
@@ -42,7 +43,7 @@ self.addEventListener('activate', (event) => {
     );
 });
 
-// Interceptar requisições (Network First Strategy)
+// Interceptar requisições (Network First Strategy - melhorada para funcionar offline)
 self.addEventListener('fetch', (event) => {
     // Ignorar requisições não GET
     if (event.request.method !== 'GET') {
@@ -54,36 +55,90 @@ self.addEventListener('fetch', (event) => {
         return;
     }
     
+    const url = new URL(event.request.url);
+    
+    // Se for navegação (página HTML), usar estratégia especial
+    if (event.request.mode === 'navigate') {
+        event.respondWith(
+            fetch(event.request)
+                .then((response) => {
+                    // Cachear todas as páginas visitadas
+                    const responseToCache = response.clone();
+                    if (response.status === 200 && response.type === 'basic') {
+                        caches.open(RUNTIME_CACHE).then((cache) => {
+                            cache.put(event.request, responseToCache);
+                        });
+                    }
+                    return response;
+                })
+                .catch(() => {
+                    // Quando offline, tentar múltiplas estratégias
+                    return caches.match(event.request)
+                        .then((cached) => {
+                            if (cached) return cached;
+                            
+                            // Tentar buscar qualquer página visitada anteriormente
+                            return caches.open(RUNTIME_CACHE).then((cache) => {
+                                return cache.keys().then((keys) => {
+                                    // Buscar qualquer página HTML no cache
+                                    const pageKeys = keys.filter(key => {
+                                        const keyUrl = key.url;
+                                        return keyUrl.includes(url.origin) && 
+                                               !keyUrl.includes('/api/') &&
+                                               !keyUrl.endsWith('.css') &&
+                                               !keyUrl.endsWith('.js') &&
+                                               !keyUrl.endsWith('.png') &&
+                                               !keyUrl.endsWith('.jpg') &&
+                                               !keyUrl.endsWith('.json') &&
+                                               !keyUrl.includes('/offline.html');
+                                    });
+                                    
+                                    // Se encontrou páginas no cache, usar a primeira
+                                    if (pageKeys.length > 0) {
+                                        return cache.match(pageKeys[0]);
+                                    }
+                                    
+                                    // Como último recurso, mostrar página offline
+                                    return caches.match('/offline.html')
+                                        .then((offlinePage) => {
+                                            return offlinePage || new Response(
+                                                '<html><body><h1>Offline</h1><p>O aplicativo não está disponível offline. Por favor, verifique sua conexão.</p></body></html>',
+                                                {
+                                                    headers: { 'Content-Type': 'text/html' },
+                                                    status: 200
+                                                }
+                                            );
+                                        });
+                                });
+                            });
+                        });
+                })
+        );
+        return;
+    }
+    
+    // Para outros recursos (CSS, JS, imagens, etc)
     event.respondWith(
         fetch(event.request)
             .then((response) => {
-                // Clonar resposta para cache
+                // Cachear recursos estáticos
                 const responseToCache = response.clone();
-                
-                // Cachear resposta válida
                 if (response.status === 200) {
                     caches.open(RUNTIME_CACHE).then((cache) => {
                         cache.put(event.request, responseToCache);
                     });
                 }
-                
                 return response;
             })
             .catch(() => {
-                // Se offline, retornar do cache
+                // Se offline, buscar do cache
                 return caches.match(event.request)
                     .then((cachedResponse) => {
                         if (cachedResponse) {
                             return cachedResponse;
                         }
-                        
-                        // Se for navegação, retornar página offline
-                        if (event.request.mode === 'navigate') {
-                            return caches.match('/offline.html');
-                        }
-                        
-                        // Retornar erro
-                        return new Response('Offline', {
+                        // Se não encontrar, retornar erro
+                        return new Response('Recurso não disponível offline', {
                             status: 503,
                             statusText: 'Service Unavailable'
                         });

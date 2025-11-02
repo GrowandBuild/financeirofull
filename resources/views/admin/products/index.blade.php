@@ -2,7 +2,7 @@
 
 @section('content')
 <div class="premium-content">
-    <div class="max-w-6xl mx-auto px-4">
+    <div class="max-w-6xl mx-auto px-4" style="max-width: 100%; overflow-x: hidden; box-sizing: border-box;">
         <!-- Header Premium -->
         <div class="premium-header mb-8">
             <div class="header-content">
@@ -79,23 +79,25 @@
         </div>
 
         <!-- Action Bar -->
-        <div class="chart-section mb-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
+        <div class="chart-section mb-6" style="max-width: 100%; overflow-x: hidden; word-wrap: break-word;">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style="flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 0; word-wrap: break-word;">
                     <h3 class="section-title">
                         <i class="bi bi-list-ul"></i>
                         Lista de Produtos
                     </h3>
-                    <p class="text-white/60 text-sm mt-1">Gerencie todos os seus produtos</p>
+                    <p class="text-white/60 text-sm mt-1" style="word-wrap: break-word;">Gerencie todos os seus produtos</p>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex gap-2" style="flex-wrap: wrap;">
                     <a href="{{ route('admin.products.create') }}" class="premium-btn primary">
                         <i class="bi bi-plus-circle"></i>
-                        Novo Produto
+                        <span class="d-none d-sm-inline">Novo Produto</span>
+                        <span class="d-sm-none">Novo</span>
                     </a>
                     <a href="{{ route('dashboard') }}" class="premium-btn outline">
                         <i class="bi bi-speedometer2"></i>
-                        Painel Principal
+                        <span class="d-none d-sm-inline">Painel Principal</span>
+                        <span class="d-sm-none">Painel</span>
                     </a>
                 </div>
             </div>
@@ -153,27 +155,28 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="flex flex-col gap-2 ml-4">
+                    <div class="flex flex-col gap-2" style="min-width: 0; flex-shrink: 0; max-width: 100%;">
                         <a href="{{ route('admin.products.show', $product) }}" 
-                           class="premium-btn outline text-xs py-2 px-3">
+                           class="premium-btn outline text-xs py-2 px-3" style="word-wrap: break-word; white-space: nowrap;">
                             <i class="bi bi-eye"></i>
-                            Ver
+                            <span class="d-none d-sm-inline">Ver</span>
                         </a>
                         <a href="{{ route('admin.products.edit', $product) }}" 
-                           class="premium-btn secondary text-xs py-2 px-3">
+                           class="premium-btn secondary text-xs py-2 px-3" style="word-wrap: break-word; white-space: nowrap;">
                             <i class="bi bi-pencil"></i>
-                            Editar
+                            <span class="d-none d-sm-inline">Editar</span>
                         </a>
                         <form action="{{ route('admin.products.destroy', $product) }}" 
                               method="POST" 
                               class="inline"
+                              style="width: 100%;"
                               onsubmit="return confirm('Tem certeza que deseja excluir este produto?')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" 
-                                    class="w-full bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 border border-red-500/30 hover:border-red-500/50 rounded-lg py-2 px-3 text-xs transition-all duration-200">
+                                    class="w-full bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 border border-red-500/30 hover:border-red-500/50 rounded-lg py-2 px-3 text-xs transition-all duration-200" style="word-wrap: break-word; white-space: nowrap;">
                                 <i class="bi bi-trash"></i>
-                                Excluir
+                                <span class="d-none d-sm-inline">Excluir</span>
                             </button>
                         </form>
                     </div>
@@ -234,6 +237,11 @@
     padding: 1.5rem;
     gap: 1rem;
     text-decoration: none;
+    max-width: 100%;
+    overflow-x: hidden;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    box-sizing: border-box;
 }
 
 .premium-product-card:hover {
@@ -302,6 +310,8 @@
     font-weight: 600;
     margin-bottom: 0.5rem;
     line-height: 1.3;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .premium-product-category {
@@ -311,6 +321,9 @@
     display: flex;
     align-items: center;
     gap: 0.25rem;
+    flex-wrap: wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .premium-product-price {
@@ -342,6 +355,9 @@
     display: flex;
     gap: 1rem;
     margin-top: 0.5rem;
+    flex-wrap: wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .stat-item {
@@ -403,6 +419,8 @@
     .premium-product-card {
         flex-direction: column;
         text-align: center;
+        padding: 1rem !important;
+        gap: 0.75rem !important;
     }
     
     .premium-product-image {
@@ -412,6 +430,66 @@
     
     .stats-grid {
         grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+    }
+    
+    .premium-product-info {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .premium-product-name,
+    .premium-product-category,
+    .premium-product-price {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    .chart-section {
+        padding: 1rem !important;
+    }
+    
+    .premium-product-card > .flex.flex-col {
+        width: 100%;
+        margin-left: 0 !important;
+        flex-direction: row;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .premium-product-card > .flex.flex-col > * {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .premium-product-card {
+        padding: 0.875rem !important;
+    }
+    
+    .premium-product-card > .flex.flex-col {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .premium-product-card > .flex.flex-col > * {
+        width: 100%;
+    }
+    
+    .header-actions {
+        flex-wrap: wrap;
+        gap: 0.25rem;
+    }
+    
+    .action-btn {
+        min-width: 2.25rem;
+        padding: 0.4rem !important;
     }
 }
 
@@ -419,10 +497,12 @@
 .premium-content {
     max-width: none !important;
     width: 100% !important;
+    overflow-x: hidden !important;
 }
 
 .premium-content .max-w-6xl {
     max-width: 1200px !important;
+    overflow-x: hidden !important;
 }
 
 /* Ensure proper spacing on larger screens */
@@ -450,21 +530,59 @@
     .actions-section {
         grid-template-columns: repeat(2, 1fr);
     }
+    
+    .premium-product-card {
+        flex-direction: row;
+        align-items: center;
+    }
+    
+    .premium-product-card > .flex.flex-col {
+        margin-left: 1rem;
+        width: auto;
+        min-width: 120px;
+    }
 }
 
 /* Fix buttons getting stuck behind bottom nav */
 .premium-content {
     padding-bottom: 120px !important;
-    margin: -1rem !important;
     padding-left: 1rem !important;
     padding-right: 1rem !important;
     padding-top: 1rem !important;
+    max-width: 100%;
+    overflow-x: hidden;
+    box-sizing: border-box;
 }
 
 /* Mobile adjustments */
 @media (max-width: 768px) {
     .premium-content {
         padding-bottom: 140px !important;
+        padding-left: 0.75rem !important;
+        padding-right: 0.75rem !important;
+    }
+    
+    .max-w-6xl {
+        max-width: 100% !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .premium-content {
+        padding-bottom: 140px !important;
+        padding-left: 0.5rem !important;
+        padding-right: 0.5rem !important;
+    }
+    
+    .max-w-6xl {
+        padding-left: 0.25rem !important;
+        padding-right: 0.25rem !important;
+    }
+    
+    .premium-header {
+        padding: 0.75rem 0.75rem !important;
     }
 }
 

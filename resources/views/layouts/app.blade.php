@@ -66,10 +66,12 @@
     <!-- Switcher de Sistemas -->
     <div class="system-switcher">
         <!-- Menu Hambúrguer -->
-        <button class="hamburger-menu" id="hamburgerMenu" onclick="toggleHamburgerMenu()">
+        <button class="hamburger-menu" id="hamburgerMenu" onclick="toggleHamburgerMenu()" aria-label="Menu">
             <span class="hamburger-line"></span>
             <span class="hamburger-line"></span>
             <span class="hamburger-line"></span>
+            <!-- Fallback ícone caso CSS não carregue -->
+            <i class="bi bi-list hamburger-fallback" style="display: none;"></i>
         </button>
         
         <!-- Total Mensal e Status -->

@@ -657,7 +657,46 @@ window.MeusProdutos = {
 
 // Inicializar menu hambúrguer
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => HamburgerMenuManager.init());
+    document.addEventListener('DOMContentLoaded', () => {
+        HamburgerMenuManager.init();
+        // Garantir que hamburger lines sejam visíveis
+        ensureHamburgerMenuVisible();
+    });
 } else {
     HamburgerMenuManager.init();
+    // Garantir que hamburger lines sejam visíveis
+    ensureHamburgerMenuVisible();
 }
+
+// Função para garantir que o menu hambúrguer seja visível
+function ensureHamburgerMenuVisible() {
+    const hamburgerMenu = document.getElementById('hamburgerMenu');
+    if (!hamburgerMenu) return;
+    
+    const hamburgerLines = hamburgerMenu.querySelectorAll('.hamburger-line');
+    const fallbackIcon = hamburgerMenu.querySelector('.hamburger-fallback');
+    
+    // Verificar se as linhas estão visíveis
+    let hasVisibleLines = false;
+    hamburgerLines.forEach(line => {
+        const style = window.getComputedStyle(line);
+        if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
+            hasVisibleLines = true;
+            // Forçar visibilidade
+            line.style.display = 'block';
+            line.style.visibility = 'visible';
+            line.style.opacity = '1';
+            line.style.background = 'white';
+        }
+    });
+    
+    // Se não houver linhas visíveis, mostrar fallback
+    if (!hasVisibleLines && fallbackIcon) {
+        fallbackIcon.style.display = 'block';
+    } else if (fallbackIcon) {
+        fallbackIcon.style.display = 'none';
+    }
+}
+
+// Executar verificação após um pequeno delay para garantir que CSS foi carregado
+setTimeout(ensureHamburgerMenuVisible, 100);
