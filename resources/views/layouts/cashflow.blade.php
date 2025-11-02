@@ -39,6 +39,9 @@
     <!-- Offline Storage -->
     <script src="{{ asset('js/offline-storage.js') }}"></script>
     
+    <!-- Offline Forms Interceptor -->
+    <script src="{{ asset('js/offline-forms.js') }}"></script>
+    
     <!-- Custom CSS para Fluxo de Caixa -->
     <style>
         body {

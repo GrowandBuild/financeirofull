@@ -5,9 +5,29 @@ class OfflineStorage {
         this.dbVersion = 2; // Versão atualizada para incluir CashFlow e Schedule
         this.db = null;
         this.isOnline = navigator.onLine;
+        this.initialized = false;
+        this.initPromise = null;
         
-        this.init();
+        // Inicializar assincronamente
+        this.initPromise = this.init();
         this.setupOnlineStatusListener();
+    }
+    
+    // Aguardar inicialização
+    async waitForInit() {
+        if (this.initialized) {
+            return this.db;
+        }
+        
+        if (this.initPromise) {
+            await this.initPromise;
+            return this.db;
+        }
+        
+        // Se não houver promise, inicializar agora
+        this.initPromise = this.init();
+        await this.initPromise;
+        return this.db;
     }
     
     // Inicializar IndexedDB
@@ -22,7 +42,8 @@ class OfflineStorage {
             
             request.onsuccess = () => {
                 this.db = request.result;
-                console.log('IndexedDB inicializado com sucesso');
+                this.initialized = true;
+                console.log('✅ IndexedDB inicializado com sucesso');
                 resolve(this.db);
             };
             
@@ -143,16 +164,27 @@ class OfflineStorage {
     
     // Buscar produtos
     async getProducts() {
+        // Aguardar inicialização se necessário
+        await this.waitForInit();
+        
+        if (!this.db) {
+            console.warn('IndexedDB não disponível, retornando array vazio');
+            return [];
+        }
+        
         const transaction = this.db.transaction(['products'], 'readonly');
         const store = transaction.objectStore('products');
         
         return new Promise((resolve, reject) => {
             const request = store.getAll();
             request.onsuccess = () => {
-                console.log('Produtos carregados do cache:', request.result.length);
+                console.log('✅ Produtos carregados do cache:', request.result.length);
                 resolve(request.result);
             };
-            request.onerror = () => reject(request.error);
+            request.onerror = () => {
+                console.error('❌ Erro ao buscar produtos:', request.error);
+                resolve([]); // Retornar array vazio em vez de rejeitar
+            };
         });
     }
     
@@ -183,37 +215,75 @@ class OfflineStorage {
     
     // Salvar compra offline
     async savePurchaseOffline(purchase) {
+        // Aguardar inicialização se necessário
+        await this.waitForInit();
+        
+        if (!this.db) {
+            throw new Error('IndexedDB não está disponível');
+        }
+        
         const transaction = this.db.transaction(['purchases'], 'readwrite');
         const store = transaction.objectStore('purchases');
         
-        // Gerar ID temporário se não existir
+        // Garantir que purchase tem uma estrutura válida
         if (!purchase.id) {
             purchase.id = 'temp_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        }
+        
+        // Garantir que tem isPending
+        if (purchase.isPending === undefined) {
             purchase.isPending = true;
         }
         
+        // Se purchase.items é um array, precisamos estruturar corretamente
+        // A compra pode ser salva como um objeto único ou como múltiplas entradas
+        const purchaseToSave = {
+            id: purchase.id,
+            isPending: purchase.isPending,
+            items: purchase.items || [],
+            store: purchase.store || purchase.purchase_store || null,
+            purchase_date: purchase.purchase_date || purchase.date || new Date().toISOString(),
+            total: purchase.total || 0,
+            timestamp: purchase.timestamp || new Date().toISOString(),
+            user_id: purchase.user_id || null
+        };
+        
         return new Promise((resolve, reject) => {
-            const request = store.put(purchase);
+            const request = store.put(purchaseToSave);
             request.onsuccess = () => {
-                console.log('Compra salva offline:', purchase.id);
-                resolve(purchase);
+                console.log('✅ Compra salva offline:', purchaseToSave.id);
+                resolve(purchaseToSave);
             };
-            request.onerror = () => reject(request.error);
+            request.onerror = () => {
+                console.error('❌ Erro ao salvar compra offline:', request.error);
+                reject(request.error);
+            };
         });
     }
     
     // Buscar compras
     async getPurchases() {
+        // Aguardar inicialização se necessário
+        await this.waitForInit();
+        
+        if (!this.db) {
+            console.warn('IndexedDB não disponível, retornando array vazio');
+            return [];
+        }
+        
         const transaction = this.db.transaction(['purchases'], 'readonly');
         const store = transaction.objectStore('purchases');
         
         return new Promise((resolve, reject) => {
             const request = store.getAll();
             request.onsuccess = () => {
-                console.log('Compras carregadas do cache:', request.result.length);
+                console.log('✅ Compras carregadas do cache:', request.result.length);
                 resolve(request.result);
             };
-            request.onerror = () => reject(request.error);
+            request.onerror = () => {
+                console.error('❌ Erro ao buscar compras:', request.error);
+                resolve([]); // Retornar array vazio em vez de rejeitar
+            };
         });
     }
     

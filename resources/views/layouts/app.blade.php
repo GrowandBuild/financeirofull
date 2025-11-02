@@ -59,6 +59,9 @@
         <!-- Offline Storage -->
         <script src="{{ asset('js/offline-storage.js') }}"></script>
         
+        <!-- Offline Forms Interceptor -->
+        <script src="{{ asset('js/offline-forms.js') }}"></script>
+        
         <!-- Custom JavaScript -->
         <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
         

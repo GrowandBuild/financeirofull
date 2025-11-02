@@ -739,9 +739,23 @@ function finalizePurchase() {
         }
         
         // Aguardar inicialização do IndexedDB se necessário
+        try {
+            await window.offlineStorage.waitForInit();
+            console.log('✅ IndexedDB inicializado e pronto');
+        } catch (error) {
+            console.error('❌ Erro ao inicializar IndexedDB:', error);
+            showNotification('Erro ao inicializar sistema offline. Recarregue a página.', 'error');
+            checkoutBtn.innerHTML = originalText;
+            checkoutBtn.disabled = false;
+            return;
+        }
+        
         if (!window.offlineStorage.db) {
-            console.log('Aguardando inicialização do IndexedDB...');
-            await new Promise(resolve => setTimeout(resolve, 500));
+            console.error('❌ IndexedDB ainda não está disponível após aguardar');
+            showNotification('Erro ao acessar armazenamento offline. Recarregue a página.', 'error');
+            checkoutBtn.innerHTML = originalText;
+            checkoutBtn.disabled = false;
+            return;
         }
         
         // Verificar se está online e usar offlineStorage se necessário
@@ -831,18 +845,33 @@ function finalizePurchase() {
             checkoutBtn.disabled = false;
             return;
         }
+        
         try {
+            // Aguardar inicialização do IndexedDB
+            await window.offlineStorage.waitForInit();
+            
+            if (!window.offlineStorage.db) {
+                throw new Error('IndexedDB não está disponível');
+            }
+            
             // Preparar item de compra para IndexedDB
+            // Formato esperado pelo savePurchase
             const purchaseItem = {
-                items: purchaseData.items,
-                store: purchaseData.store,
-                purchase_date: purchaseData.date,
-                total: purchaseData.total,
-                timestamp: new Date().toISOString()
+                items: purchaseData.items || [],
+                store: purchaseData.store || null,
+                purchase_date: purchaseData.date || new Date().toISOString(),
+                date: purchaseData.date || new Date().toISOString(),
+                total: purchaseData.total || 0,
+                timestamp: new Date().toISOString(),
+                user_id: null // Será preenchido pelo servidor na sincronização
             };
             
+            console.log('💾 Salvando compra offline:', purchaseItem);
+            
             // Salvar usando offlineStorage
-            await window.offlineStorage.savePurchase(purchaseItem);
+            const saved = await window.offlineStorage.savePurchase(purchaseItem);
+            
+            console.log('✅ Compra salva offline com sucesso:', saved);
             
             alert('Compra salva offline! ✅\n\nA compra será sincronizada automaticamente quando você voltar online.');
             
@@ -859,8 +888,9 @@ function finalizePurchase() {
             checkoutBtn.disabled = false;
             
         } catch (error) {
-            console.error('Erro ao salvar offline:', error);
-            showNotification('Erro ao salvar compra offline. Tente novamente.', 'error');
+            console.error('❌ Erro ao salvar offline:', error);
+            console.error('Stack:', error.stack);
+            showNotification('Erro ao salvar compra offline: ' + error.message, 'error');
             checkoutBtn.innerHTML = originalText;
             checkoutBtn.disabled = false;
         }
