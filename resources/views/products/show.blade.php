@@ -60,7 +60,7 @@
             </div>
             <div class="stat-content">
                 <div class="stat-label">Gasto Total</div>
-                <div class="stat-value">R$ {{ number_format($product->total_spent ?? 520, 2, ',', '.') }}</div>
+                <div class="stat-value">R$ {{ number_format($product->total_spent ?? 0, 2, ',', '.') }}</div>
                 <div class="stat-subtitle">Desde o início</div>
             </div>
         </div>
@@ -71,7 +71,7 @@
             </div>
             <div class="stat-content">
                 <div class="stat-label">Preço Médio</div>
-                <div class="stat-value">R$ {{ number_format($product->average_price ?? 6.25, 2, ',', '.') }}/{{ $product->unit ?? 'L' }}</div>
+                <div class="stat-value">R$ {{ number_format($product->average_price ?? 0, 2, ',', '.') }}/{{ $product->unit ?? 'L' }}</div>
                 <div class="stat-subtitle">Últimos 30 dias</div>
             </div>
         </div>
@@ -82,7 +82,7 @@
             </div>
             <div class="stat-content">
                 <div class="stat-label">Último Preço</div>
-                <div class="stat-value">R$ {{ number_format($product->last_price ?? 6.80, 2, ',', '.') }}</div>
+                <div class="stat-value">R$ {{ number_format($product->last_price ?? 0, 2, ',', '.') }}</div>
                 <div class="stat-subtitle">Compra recente</div>
             </div>
         </div>
@@ -93,47 +93,50 @@
             </div>
             <div class="stat-content">
                 <div class="stat-label">Compras</div>
-                <div class="stat-value">{{ $product->purchase_count ?? 12 }}</div>
+                <div class="stat-value">{{ $product->purchase_count ?? 0 }}</div>
                 <div class="stat-subtitle">Total de vezes</div>
             </div>
         </div>
     </div>
     
     <!-- Premium Chart Section -->
+    @if($hasPurchases)
     <div class="chart-section">
         <div class="section-header">
             <h3 class="section-title">
                 <i class="bi bi-graph-up-arrow"></i>
                 Evolução de Preços
             </h3>
-            <div class="chart-controls">
-                <button class="chart-btn active" data-period="7d">7D</button>
-                <button class="chart-btn" data-period="30d">30D</button>
-                <button class="chart-btn" data-period="90d">90D</button>
-            </div>
         </div>
         
         <div class="chart-container">
             <canvas id="priceChart"></canvas>
-            </div>
+        </div>
             
         <div class="chart-stats">
             <div class="chart-stat">
                 <span class="stat-label">Menor Preço</span>
-                <span class="stat-value text-success">R$ 5,80</span>
+                <span class="stat-value text-success">R$ {{ number_format($priceStats['min_price'], 2, ',', '.') }}</span>
             </div>
             <div class="chart-stat">
                 <span class="stat-label">Maior Preço</span>
-                <span class="stat-value text-danger">R$ 6,90</span>
+                <span class="stat-value text-danger">R$ {{ number_format($priceStats['max_price'], 2, ',', '.') }}</span>
             </div>
             <div class="chart-stat">
                 <span class="stat-label">Tendência</span>
-                <span class="stat-value text-warning">
-                    <i class="bi bi-arrow-up"></i> +2.3%
+                <span class="stat-value {{ $priceStats['trend'] === 'up' ? 'text-warning' : ($priceStats['trend'] === 'down' ? 'text-info' : 'text-muted') }}">
+                    @if($priceStats['trend'] === 'up')
+                        <i class="bi bi-arrow-up"></i> +{{ number_format($priceStats['trend_percent'], 1) }}%
+                    @elseif($priceStats['trend'] === 'down')
+                        <i class="bi bi-arrow-down"></i> -{{ number_format($priceStats['trend_percent'], 1) }}%
+                    @else
+                        <i class="bi bi-dash-lg"></i> Estável
+                    @endif
                 </span>
             </div>
         </div>
-            </div>
+    </div>
+    @endif
             
     <!-- Premium Purchase History -->
     <div class="history-section">
@@ -229,68 +232,72 @@ function confirmDeletePurchase() {
 }
 
 // Premium Chart.js Configuration
-const ctx = document.getElementById('priceChart').getContext('2d');
-const priceChart = new Chart(ctx, {
-    type: 'line',
-    data: {
-        labels: ['10/01', '10/03', '10/05', '10/08', '10/10', '10/12', '10/15'],
-        datasets: [{
-            label: 'Preço',
-            data: [6.2, 6.0, 6.1, 5.8, 6.0, 5.9, 6.8],
-            borderColor: '#10b981',
-            backgroundColor: 'rgba(16, 185, 129, 0.1)',
-            borderWidth: 3,
-            pointRadius: 6,
-            pointBackgroundColor: '#10b981',
-            pointBorderColor: '#ffffff',
-            pointBorderWidth: 2,
-            tension: 0.4,
-            fill: true
-        }]
-    },
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-            legend: {
-                display: false
-            }
+@if($hasPurchases && !empty($priceStats['chart_data']))
+const ctx = document.getElementById('priceChart');
+if (ctx) {
+    const priceChart = new Chart(ctx.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: @json($priceStats['chart_data']['labels']),
+            datasets: [{
+                label: 'Preço',
+                data: @json($priceStats['chart_data']['prices']),
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                borderWidth: 3,
+                pointRadius: 6,
+                pointBackgroundColor: '#10b981',
+                pointBorderColor: '#ffffff',
+                pointBorderWidth: 2,
+                tension: 0.4,
+                fill: true
+            }]
         },
-        scales: {
-            x: {
-                grid: {
-                    color: 'rgba(107, 114, 128, 0.3)',
-                    borderColor: 'rgba(107, 114, 128, 0.5)'
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: 'rgba(107, 114, 128, 0.3)',
+                        borderColor: 'rgba(107, 114, 128, 0.5)'
+                    },
+                    ticks: {
+                        color: '#9ca3af',
+                        font: {
+                            size: 11,
+                            weight: '500'
+                        }
+                    }
                 },
-                ticks: {
-                    color: '#9ca3af',
-                    font: {
-                        size: 11,
-                        weight: '500'
+                y: {
+                    grid: {
+                        color: 'rgba(107, 114, 128, 0.3)',
+                        borderColor: 'rgba(107, 114, 128, 0.5)'
+                    },
+                    ticks: {
+                        color: '#9ca3af',
+                        font: {
+                            size: 11,
+                            weight: '500'
+                        }
                     }
                 }
             },
-            y: {
-                grid: {
-                    color: 'rgba(107, 114, 128, 0.3)',
-                    borderColor: 'rgba(107, 114, 128, 0.5)'
-                },
-                ticks: {
-                    color: '#9ca3af',
-                    font: {
-                        size: 11,
-                        weight: '500'
-                    }
+            elements: {
+                point: {
+                    hoverRadius: 8
                 }
             }
-        },
-        elements: {
-            point: {
-                hoverRadius: 8
-            }
         }
-    }
-});
+    });
+}
+@endif
 
 // Chart period controls
 document.querySelectorAll('.chart-btn').forEach(btn => {

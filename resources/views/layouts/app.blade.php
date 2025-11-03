@@ -57,6 +57,133 @@
         
         <!-- Custom JavaScript -->
         <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
+        
+        <!-- Estilos para Frases de Gestão Financeira (Mobile) -->
+        <style>
+        /* Frases de Gestão Financeira - Apenas Mobile */
+        .finance-quotes-mobile {
+            display: none;
+            flex: 1;
+            margin: 0 0.75rem;
+            overflow: hidden;
+            min-width: 0;
+        }
+        
+        .quote-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.375rem 0.75rem;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            animation: fadeInQuote 0.5s ease-in-out;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            min-height: 2rem;
+        }
+        
+        .quote-icon {
+            color: #10b981;
+            font-size: 0.875rem;
+            flex-shrink: 0;
+        }
+        
+        .quote-text-wrapper {
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .quote-text {
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 500;
+            opacity: 0.9;
+            line-height: 1.4;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Scroll automático quando texto não cabe em 2 linhas */
+        .quote-text-wrapper.scroll-mode {
+            overflow: hidden;
+        }
+        
+        .quote-text-wrapper.scroll-mode .quote-text {
+            display: inline-block;
+            white-space: nowrap;
+            -webkit-line-clamp: unset;
+            -webkit-box-orient: unset;
+            animation: scrollHorizontal 15s linear infinite;
+            animation-delay: 2s;
+            cursor: pointer;
+            padding-right: 2rem;
+        }
+        
+        @keyframes scrollHorizontal {
+            0% {
+                transform: translateX(0);
+            }
+            20% {
+                transform: translateX(0);
+            }
+            80% {
+                transform: translateX(var(--scroll-amount, -200px));
+            }
+            100% {
+                transform: translateX(0);
+            }
+        }
+        
+        @keyframes fadeInQuote {
+            from {
+                opacity: 0;
+                transform: translateX(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .finance-quotes-mobile {
+                display: flex;
+            }
+            
+            .system-switcher {
+                display: flex;
+                align-items: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .quote-text {
+                font-size: 0.65rem;
+                max-width: 150px;
+            }
+            
+            .quote-icon {
+                font-size: 0.75rem;
+            }
+            
+            .quote-container {
+                padding: 0.25rem 0.5rem;
+            }
+        }
+        </style>
     </head>
 <body>
     <!-- Switcher de Sistemas -->
@@ -69,6 +196,16 @@
             <!-- Fallback ícone caso CSS não carregue -->
             <i class="bi bi-list hamburger-fallback" style="display: none;"></i>
         </button>
+        
+        <!-- Frases de Gestão Financeira (Apenas Mobile) -->
+        <div class="finance-quotes-mobile">
+            <div class="quote-container" id="financeQuoteContainer">
+                <i class="bi bi-lightbulb quote-icon"></i>
+                <div class="quote-text-wrapper">
+                    <span class="quote-text" id="financeQuoteText">Pague-se primeiro: guarde pelo menos 10% da sua renda</span>
+                </div>
+            </div>
+        </div>
         
         <!-- Total Mensal e Status -->
         <div class="monthly-info">
@@ -271,6 +408,92 @@
                 }, false);
             }
         });
+    </script>
+    
+    <!-- Script para Rotacionar Frases de Gestão Financeira -->
+    <script>
+    (function() {
+        const financeQuotes = [
+            'Pague-se primeiro: guarde pelo menos 10% da sua renda',
+            'Não gaste mais do que você ganha',
+            'Planeje cada compra antes de executá-la',
+            'Tenha uma reserva de emergência',
+            'Invista em conhecimento, é o melhor ativo',
+            'Evite dívidas desnecessárias',
+            'Controle seus gastos diariamente',
+            'Estabeleça metas financeiras claras',
+            'Compare preços antes de comprar',
+            'Priorize necessidades sobre desejos',
+            'Registre todas as suas transações',
+            'Revise seus gastos mensalmente',
+            'Aprenda a dizer não a compras impulsivas',
+            'Construa múltiplas fontes de renda',
+            'Pense a longo prazo, mas comece pequeno'
+        ];
+        
+        const quoteText = document.getElementById('financeQuoteText');
+        const quoteContainer = document.getElementById('financeQuoteContainer');
+        
+        if (quoteText && quoteContainer) {
+            let currentQuoteIndex = Math.floor(Math.random() * financeQuotes.length);
+            
+            function updateQuoteText() {
+                quoteText.textContent = financeQuotes[currentQuoteIndex];
+                
+                // Verifica se o texto precisa de scroll
+                setTimeout(() => {
+                    const wrapper = quoteText.parentElement;
+                    const containerWidth = wrapper.offsetWidth;
+                    
+                    // Primeiro verifica se cabe em 2 linhas
+                    quoteText.style.display = '-webkit-box';
+                    const textHeight = quoteText.scrollHeight;
+                    const containerHeight = wrapper.offsetHeight;
+                    
+                    // Se não couber em 2 linhas ou for muito largo, ativa scroll
+                    if (textHeight > containerHeight * 2.5) {
+                        quoteText.style.display = 'inline-block';
+                        const textWidth = quoteText.scrollWidth;
+                        
+                        if (textWidth > containerWidth) {
+                            wrapper.classList.add('scroll-mode');
+                            // Calcula o deslocamento necessário
+                            const scrollAmount = textWidth - containerWidth + 20; // 20px de margem
+                            quoteText.style.setProperty('--scroll-amount', `-${scrollAmount}px`);
+                        } else {
+                            wrapper.classList.remove('scroll-mode');
+                        }
+                    } else {
+                        quoteText.style.display = '-webkit-box';
+                        wrapper.classList.remove('scroll-mode');
+                    }
+                }, 200);
+            }
+            
+            updateQuoteText();
+            
+            // Função para trocar frase com animação
+            function rotateQuote() {
+                if (quoteContainer) {
+                    const wrapper = quoteText.parentElement;
+                    wrapper.classList.remove('scroll-mode');
+                    quoteContainer.style.opacity = '0';
+                    quoteContainer.style.transform = 'translateX(-10px)';
+                    
+                    setTimeout(() => {
+                        currentQuoteIndex = (currentQuoteIndex + 1) % financeQuotes.length;
+                        updateQuoteText();
+                        
+                        quoteContainer.style.opacity = '1';
+                        quoteContainer.style.transform = 'translateX(0)';
+                    }, 300);
+                }
+            }
+            
+            // Trocar frase a cada 8 segundos
+            setInterval(rotateQuote, 8000);
+        }
+    })();
     </script>
         
     @yield('scripts')

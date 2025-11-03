@@ -317,6 +317,7 @@ function addVariant() {
                     <option value="L">L</option>
                     <option value="ml">ml</option>
                     <option value="un">un</option>
+                    <option value="pct">pct</option>
                     <option value="dz">dz</option>
                     <option value="cx">cx</option>
                 </select>

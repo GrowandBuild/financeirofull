@@ -28,47 +28,43 @@
     <!-- Search Form -->
     <div class="search-form-container">
         <form id="searchForm" method="GET" action="{{ route('products.search') }}">
-            <div class="search-input-group">
-                <div class="search-icon">
-                    <i class="bi bi-search"></i>
-                </div>
-                <input type="text" 
-                       class="premium-search-input" 
-                       id="searchInput" 
-                       name="q" 
-                       value="{{ $query }}"
-                       placeholder="Digite o nome do produto..."
-                       autocomplete="off">
-                @if($query)
-                    <button type="button" class="clear-input-btn" onclick="clearInput()">
-                        <i class="bi bi-x"></i>
+            <!-- Input de Busca Integrado -->
+            <div class="modern-search-container">
+                <div class="search-input-wrapper">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" 
+                           class="modern-search-input" 
+                           id="searchInput" 
+                           name="q" 
+                           value="{{ $query ?? '' }}"
+                           placeholder="Digite o nome do produto..."
+                           autocomplete="off">
+                    @if(!empty($query))
+                        <button type="button" class="clear-input-btn" onclick="clearInput()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    @endif
+                    <button type="submit" class="search-submit-btn">
+                        <i class="bi bi-search"></i>
+                        <span>Buscar</span>
                     </button>
-                @endif
-            </div>
-            
-            <div class="filter-section">
-                <div class="filter-header">
-                    <i class="bi bi-funnel"></i>
-                    <span>Filtros</span>
                 </div>
-                <select class="premium-select" id="categoryFilter" name="category">
-                    <option value="">Todas as categorias</option>
-                    @foreach($categories as $cat)
-                        <option value="{{ $cat }}" {{ $category === $cat ? 'selected' : '' }}>
-                            {{ $cat }}
-                        </option>
-                    @endforeach
-                </select>
             </div>
         </form>
     </div>
 
     <!-- Search Results -->
-    @if($query || $category)
+    @php
+        $hasQuery = !empty($query ?? '');
+        $hasCategory = !empty($category ?? '');
+        $hasProducts = isset($products) && $products->count() > 0;
+    @endphp
+
+    @if($hasQuery || $hasCategory)
         <div class="results-header">
             <div class="results-info">
                 <h3 class="results-title">
-                    @if($products->count() > 0)
+                    @if($hasProducts)
                         <i class="bi bi-check-circle text-success"></i>
                         {{ $products->count() }} produto(s) encontrado(s)
                     @else
@@ -76,12 +72,12 @@
                         Nenhum produto encontrado
                     @endif
                 </h3>
-                @if($query)
+                @if($hasQuery)
                     <div class="search-term">
                         Busca por: <span class="highlight">"{{ $query }}"</span>
                     </div>
                 @endif
-                @if($category)
+                @if($hasCategory)
                     <div class="filter-term">
                         Categoria: <span class="highlight">{{ $category }}</span>
                     </div>
@@ -94,7 +90,7 @@
         </div>
     @endif
 
-    @if($products->count() > 0)
+    @if($hasProducts)
         <!-- Premium Product Grid -->
         <div class="premium-product-grid search-grid">
             @foreach($products as $product)
@@ -123,7 +119,7 @@
                         <div class="product-stats">
                             <div class="stat-item">
                                 <i class="bi bi-bag-check"></i>
-                                <span>{{ $product->purchase_count ?? 0 }} compras</span>
+                                <span>{{ $product->purchases_count ?? 0 }} compras</span>
                             </div>
                             <div class="stat-item">
                                 <i class="bi bi-graph-up"></i>
@@ -140,30 +136,278 @@
             <div class="empty-icon">
                 <i class="bi bi-search"></i>
             </div>
-            <h4 class="empty-title">Nenhum produto encontrado</h4>
-            <p class="empty-description">
-                @if($query)
-                    Não encontramos produtos com "{{ $query }}"
-                @elseif($category)
-                    Não encontramos produtos na categoria "{{ $category }}"
+            <h4 class="empty-title">
+                @if($hasQuery || $hasCategory)
+                    Nenhum produto encontrado
                 @else
-                    Digite um termo para buscar produtos
+                    Comece sua busca
+                @endif
+            </h4>
+            <p class="empty-description">
+                @if($hasQuery)
+                    Não encontramos produtos com "{{ $query }}".<br>
+                    Tente usar termos diferentes ou verifique a ortografia.
+                @elseif($hasCategory)
+                    Não encontramos produtos na categoria "{{ $category }}".
+                @else
+                    Digite o nome do produto que deseja encontrar
                 @endif
             </p>
             <div class="empty-actions">
-                <button onclick="clearSearch()" class="premium-btn outline">
-                    <i class="bi bi-arrow-clockwise"></i>
-                    <span>Tentar novamente</span>
-                </button>
-                <button onclick="document.getElementById('searchInput').focus()" class="premium-btn secondary">
-                    <i class="bi bi-search"></i>
-                    <span>Nova busca</span>
-                </button>
+                @if($hasQuery || $hasCategory)
+                    <button onclick="clearSearch()" class="premium-btn outline">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                        <span>Limpar busca</span>
+                    </button>
+                    <button onclick="document.getElementById('searchInput').focus()" class="premium-btn secondary">
+                        <i class="bi bi-search"></i>
+                        <span>Nova busca</span>
+                    </button>
+                @else
+                    <button onclick="document.getElementById('searchInput').focus()" class="premium-btn secondary">
+                        <i class="bi bi-search"></i>
+                        <span>Buscar produtos</span>
+                    </button>
+                @endif
             </div>
         </div>
     @endif
 </div>
 
+@endsection
+
+@section('styles')
+<style>
+/* ============================================
+   CONTAINER DE BUSCA MODERNO
+   ============================================ */
+
+.search-form-container {
+    position: relative;
+    z-index: 1;
+    margin-bottom: 1.5rem;
+}
+
+.modern-search-container {
+    width: 100%;
+}
+
+.search-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(16, 185, 129, 0.3);
+    border-radius: 16px;
+    padding: 0.875rem 1rem;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.search-input-wrapper:focus-within {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15), 0 4px 24px rgba(16, 185, 129, 0.2);
+    transform: translateY(-2px);
+}
+
+.search-icon {
+    color: rgba(16, 185, 129, 0.8);
+    font-size: 1.125rem;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.search-input-wrapper:focus-within .search-icon {
+    color: #10b981;
+    transform: scale(1.1);
+}
+
+.modern-search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1rem;
+    font-weight: 500;
+    padding: 0;
+    outline: none;
+    min-width: 0;
+}
+
+.modern-search-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.clear-input-btn {
+    width: 2rem;
+    height: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 50%;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    flex-shrink: 0;
+}
+
+.clear-input-btn:hover {
+    background: rgba(239, 68, 68, 0.25);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+    transform: scale(1.1) rotate(90deg);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
+}
+
+.clear-input-btn:active {
+    transform: scale(0.95) rotate(90deg);
+}
+
+.search-submit-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    color: white;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    flex-shrink: 0;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+}
+
+.search-submit-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.search-submit-btn:hover::before {
+    left: 100%;
+}
+
+.search-submit-btn:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.3);
+}
+
+.search-submit-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.search-submit-btn i {
+    font-size: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.search-submit-btn span {
+    position: relative;
+    z-index: 1;
+}
+
+/* ============================================
+   GRID DE PRODUTOS - 2 COLUNAS
+   ============================================ */
+
+.premium-product-grid.search-grid {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 0.75rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+@media (max-width: 575px) {
+    .premium-product-grid.search-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 0.5rem;
+    }
+}
+
+/* ============================================
+   RESPONSIVO
+   ============================================ */
+
+@media (max-width: 768px) {
+    .search-input-wrapper {
+        padding: 0.75rem 0.875rem;
+        gap: 0.5rem;
+    }
+    
+    .search-submit-btn {
+        padding: 0.5625rem 1rem;
+        font-size: 0.875rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .search-input-wrapper {
+        padding: 0.625rem 0.75rem;
+        gap: 0.375rem;
+        border-radius: 12px;
+    }
+    
+    .search-icon {
+        font-size: 1rem;
+    }
+    
+    .modern-search-input {
+        font-size: 0.9375rem;
+    }
+    
+    .search-submit-btn {
+        padding: 0.5rem 0.875rem;
+        font-size: 0.8125rem;
+        border-radius: 10px;
+    }
+    
+    .search-submit-btn span {
+        display: none;
+    }
+    
+    .search-submit-btn i {
+        font-size: 1.125rem;
+    }
+    
+    .clear-input-btn {
+        width: 1.75rem;
+        height: 1.75rem;
+    }
+}
+
+@media (max-width: 375px) {
+    .search-input-wrapper {
+        padding: 0.5625rem 0.625rem;
+        gap: 0.25rem;
+    }
+    
+    .search-submit-btn {
+        padding: 0.4375rem 0.75rem;
+        font-size: 0.75rem;
+    }
+}
+</style>
 @endsection
 
 @section('scripts')
@@ -174,7 +418,6 @@ function goBack() {
 
 function clearSearch() {
     document.getElementById('searchInput').value = '';
-    document.getElementById('categoryFilter').value = '';
     document.getElementById('searchForm').submit();
 }
 
@@ -187,40 +430,45 @@ function viewProduct(productId) {
     window.location.href = `/products/${productId}`;
 }
 
-// Auto-submit form when category changes
-document.getElementById('categoryFilter').addEventListener('change', function() {
-    document.getElementById('searchForm').submit();
-});
-
 // Focus on search input when page loads
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('searchForm');
+    
+    // Focus no input de busca
     if (searchInput && !searchInput.value) {
         searchInput.focus();
     }
-});
-
-// Real-time search with debounce
-let searchTimeout;
-document.getElementById('searchInput').addEventListener('input', function() {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => {
-        if (this.value.length >= 2 || this.value.length === 0) {
-            document.getElementById('searchForm').submit();
-        }
-    }, 500);
-});
-
-// Add loading state during search
-document.getElementById('searchForm').addEventListener('submit', function() {
-    const searchInput = document.getElementById('searchInput');
-    searchInput.style.opacity = '0.7';
-    searchInput.disabled = true;
     
-    setTimeout(() => {
-        searchInput.style.opacity = '1';
-        searchInput.disabled = false;
-    }, 1000);
+    // Real-time search with debounce
+    if (searchInput && searchForm) {
+        let searchTimeout;
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            searchTimeout = setTimeout(() => {
+                if (query.length >= 2 || query.length === 0) {
+                    searchForm.submit();
+                }
+            }, 500);
+        });
+    }
+    
+    // Add loading state during search
+    if (searchForm) {
+        searchForm.addEventListener('submit', function(e) {
+            const searchInput = document.getElementById('searchInput');
+            if (searchInput) {
+                searchInput.style.opacity = '0.7';
+                searchInput.disabled = true;
+                
+                setTimeout(() => {
+                    searchInput.style.opacity = '1';
+                    searchInput.disabled = false;
+                }, 1000);
+            }
+        });
+    }
 });
 </script>
 @endsection

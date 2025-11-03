@@ -202,9 +202,9 @@
 
         <!-- Pagination -->
         @if($products->hasPages())
-            <div class="mt-8 flex justify-center">
-                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-4">
-                    {{ $products->links() }}
+            <div class="mt-6 flex justify-center">
+                <div class="bg-white/10 backdrop-blur-sm rounded-lg p-3">
+                    {{ $products->onEachSide(1)->links() }}
                 </div>
             </div>
         @endif
@@ -616,6 +616,69 @@
     0%, 100% { transform: translateY(-3px) scale(1.05); }
     25% { transform: translateY(-3px) scale(1.05) translateX(-2px); }
     75% { transform: translateY(-3px) scale(1.05) translateX(2px); }
+}
+
+/* Paginação Premium */
+.pagination {
+    margin-bottom: 0;
+    justify-content: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+}
+
+.pagination .page-link {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    min-width: 2.5rem;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pagination .page-link:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border-color: #10b981;
+    color: white;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
+
+.pagination .page-item.disabled .page-link {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.3);
+    cursor: not-allowed;
+}
+
+.pagination .page-item.disabled .page-link:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Mobile adjustments for pagination */
+@media (max-width: 640px) {
+    .pagination {
+        gap: 0.125rem;
+    }
+    
+    .pagination .page-link {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.875rem;
+        min-width: 2rem;
+    }
 }
 </style>
 @endsection

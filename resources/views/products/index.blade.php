@@ -34,11 +34,7 @@
             </div>
             <div class="spend-info">
                 <h3 class="spend-title">Gasto Total (Mês)</h3>
-                <div class="spend-amount">R$ {{ number_format($totalMonthlySpend ?? 1250, 2, ',', '.') }}</div>
-                <div class="spend-trend">
-                    <i class="bi bi-arrow-down text-success"></i>
-                    <span>5% abaixo da média</span>
-                </div>
+                <div class="spend-amount">R$ {{ number_format($totalMonthlySpend ?? 0, 2, ',', '.') }}</div>
             </div>
             <button class="add-product-btn">
                 <i class="bi bi-plus-lg"></i>
@@ -139,7 +135,7 @@
     <!-- Paginação -->
     @if($products && $products->count() > 0)
         <div class="mt-4">
-            {{ $products->links() }}
+            {{ $products->onEachSide(1)->links() }}
         </div>
     @endif
 </div>
@@ -215,10 +211,13 @@
     font-size: 1rem;
 }
 
-/* Paginação estilizada */
+/* Paginação Premium */
 .pagination {
     margin-bottom: 0;
     justify-content: center;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
 }
 
 .pagination .page-link {
@@ -226,24 +225,53 @@
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: white;
     padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    min-width: 2.5rem;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .pagination .page-link:hover {
     background: rgba(255, 255, 255, 0.2);
     color: white;
     border-color: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .pagination .page-item.active .page-link {
     background: linear-gradient(135deg, #10b981, #059669);
     border-color: #10b981;
     color: white;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
 }
 
 .pagination .page-item.disabled .page-link {
     background: rgba(255, 255, 255, 0.05);
     border-color: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.3);
+    cursor: not-allowed;
+}
+
+.pagination .page-item.disabled .page-link:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+/* Mobile adjustments for pagination */
+@media (max-width: 640px) {
+    .pagination {
+        gap: 0.125rem;
+    }
+    
+    .pagination .page-link {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.875rem;
+        min-width: 2rem;
+    }
 }
 </style>
 @endsection

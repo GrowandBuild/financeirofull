@@ -60,13 +60,54 @@ class ProductController extends Controller
                   ->orderBy('purchase_date', 'desc');
         }]);
 
-        return view('products.show', compact('product'));
+        // Calcular estatísticas reais
+        $hasPurchases = $product->purchases->count() > 0;
+        
+        $priceStats = [
+            'min_price' => 0,
+            'max_price' => 0,
+            'avg_price' => 0,
+            'trend' => 'stable',
+            'trend_percent' => 0,
+            'chart_data' => []
+        ];
+        
+        if ($hasPurchases) {
+            $priceStats['min_price'] = $product->purchases->min('price');
+            $priceStats['max_price'] = $product->purchases->max('price');
+            $priceStats['avg_price'] = $product->purchases->avg('price');
+            
+            // Calcular tendência (purchases já vem ordenado por desc)
+            $recentPrices = $product->purchases->take(2)->pluck('price')->toArray();
+            if (count($recentPrices) >= 2) {
+                if ($recentPrices[0] > $recentPrices[1]) {
+                    $priceStats['trend'] = 'up';
+                    $priceStats['trend_percent'] = (($recentPrices[0] - $recentPrices[1]) / $recentPrices[1]) * 100;
+                } elseif ($recentPrices[0] < $recentPrices[1]) {
+                    $priceStats['trend'] = 'down';
+                    $priceStats['trend_percent'] = (($recentPrices[1] - $recentPrices[0]) / $recentPrices[1]) * 100;
+                }
+            }
+            
+            // Preparar dados para o gráfico (últimos 7 registros)
+            $chartPurchases = $product->purchases->take(7)->reverse()->values();
+            $priceStats['chart_data'] = [
+                'labels' => $chartPurchases->pluck('purchase_date')->map(function($date) {
+                    return $date->format('d/m');
+                })->toArray(),
+                'prices' => $chartPurchases->pluck('price')->toArray()
+            ];
+        }
+
+        return view('products.show', compact('product', 'hasPurchases', 'priceStats'));
     }
 
     public function search()
     {
         $query = request('q', '');
         $category = request('category', '');
+        $sort = request('sort', 'relevance');
+        $priceRange = request('price_range', '');
         $ajax = request('ajax', false);
         
         $productsQuery = Product::select([
@@ -76,14 +117,29 @@ class ProductController extends Controller
         ]);
         
         if ($query) {
+            $query = trim($query);
             $productsQuery->where(function($q) use ($query) {
-                $q->where('name', 'LIKE', "%{$query}%")
-                  ->orWhere('description', 'LIKE', "%{$query}%");
+                $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($query) . '%'])
+                  ->orWhereRaw('LOWER(description) LIKE ?', ['%' . strtolower($query) . '%']);
             });
         }
         
         if ($category) {
             $productsQuery->where('category', $category);
+        }
+        
+        // Filtrar por faixa de preço baseado no average_price
+        if ($priceRange) {
+            if ($priceRange === '100+') {
+                $productsQuery->where('average_price', '>=', 100);
+            } else {
+                $range = explode('-', $priceRange);
+                if (count($range) === 2) {
+                    $min = (float) $range[0];
+                    $max = (float) $range[1];
+                    $productsQuery->whereBetween('average_price', [$min, $max]);
+                }
+            }
         }
         
         $products = $productsQuery->withCount('purchases')->get();
@@ -104,6 +160,38 @@ class ProductController extends Controller
             $product->monthly_spend = $monthlyStats[$product->id] ?? 0;
         });
 
+        // Aplicar ordenação
+        switch ($sort) {
+            case 'name_asc':
+                $products = $products->sortBy('name')->values();
+                break;
+            case 'name_desc':
+                $products = $products->sortByDesc('name')->values();
+                break;
+            case 'price_asc':
+                $products = $products->sortBy(function ($product) {
+                    return $product->average_price ?? 0;
+                })->values();
+                break;
+            case 'price_desc':
+                $products = $products->sortByDesc(function ($product) {
+                    return $product->average_price ?? 0;
+                })->values();
+                break;
+            case 'most_bought':
+                $products = $products->sortByDesc(function ($product) {
+                    return $product->purchases_count ?? 0;
+                })->values();
+                break;
+            case 'recent':
+                $products = $products->sortByDesc('id')->values();
+                break;
+            case 'relevance':
+            default:
+                // Manter ordem original (relevância para busca)
+                break;
+        }
+
         // Categorias únicas para filtros
         $categories = Product::select('category')
             ->distinct()
@@ -120,10 +208,10 @@ class ProductController extends Controller
         }
 
         return view('products.search', [
-            'products' => $products,
-            'categories' => $categories,
-            'query' => $query,
-            'category' => $category
+            'products' => $products ?? collect(),
+            'categories' => $categories ?? collect(),
+            'query' => $query ?? '',
+            'category' => $category ?? ''
         ]);
     }
 
