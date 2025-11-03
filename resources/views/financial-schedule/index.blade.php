@@ -22,9 +22,9 @@
 <div class="premium-content">
     <!-- Notificação de Lembretes -->
     @if($notificationCount > 0)
-    <div class="alert alert-warning d-flex align-items-center" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; margin-bottom: 20px; border-radius: 15px;">
-        <i class="bi bi-bell-fill me-2" style="font-size: 1.5rem;"></i>
-        <div class="flex-grow-1">
+    <div class="alert alert-warning schedule-notification d-flex align-items-center" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); border: none; margin-bottom: 20px; border-radius: 15px; padding: 1rem;">
+        <i class="bi bi-bell-fill schedule-notification-icon"></i>
+        <div class="flex-grow-1 schedule-notification-text">
             <strong>Você tem {{ $notificationCount }} lembrete(s) próximo(s) ao vencimento!</strong>
         </div>
     </div>
@@ -33,90 +33,91 @@
     <!-- Lista de Itens Agendados -->
     @if($schedules->count() > 0)
         @foreach($schedules as $schedule)
-        <div class="premium-product-card" style="margin-bottom: 15px;">
-            <div class="d-flex align-items-start">
+        <div class="premium-product-card schedule-card" style="margin-bottom: 15px;">
+            <div class="schedule-card-content">
                 <!-- Imagem se houver -->
                 @if($schedule->image_path)
-                <div class="me-3">
+                <div class="schedule-image-wrapper">
                     <img src="{{ asset('storage/' . $schedule->image_path) }}" 
                          alt="{{ $schedule->title }}" 
-                         style="width: 80px; height: 80px; object-fit: cover; border-radius: 12px;">
+                         class="schedule-image">
                 </div>
                 @endif
                 
-                <div class="flex-grow-1">
-                    <div class="d-flex justify-content-between align-items-start mb-2">
-                        <div>
-                            <h4 class="mb-1" style="color: white; font-size: 1.1rem;">
+                <div class="schedule-main-content">
+                    <div class="schedule-header">
+                        <div class="schedule-title-section">
+                            <h4 class="schedule-title">
                                 {{ $schedule->title }}
                                 @if($schedule->is_cancelled)
-                                    <span class="badge bg-secondary ms-2" style="font-size: 0.7rem;">
+                                    <span class="badge bg-secondary schedule-badge-cancelled">
                                         <i class="bi bi-x-circle"></i> Cancelado
                                     </span>
                                 @endif
                             </h4>
                             @if($schedule->description)
-                            <p class="mb-0" style="color: rgba(255,255,255,0.7); font-size: 0.9rem;">{{ $schedule->description }}</p>
+                            <p class="schedule-description">{{ $schedule->description }}</p>
                             @endif
                         </div>
-                        <div class="text-end">
-                            <span class="badge {{ $schedule->type === 'income' ? 'bg-success' : 'bg-danger' }}" style="font-size: 0.7rem;">
+                        <div class="schedule-badges-top">
+                            <span class="badge {{ $schedule->type === 'income' ? 'bg-success' : 'bg-danger' }} schedule-type-badge">
                                 {{ $schedule->type_label }}
                             </span>
                             @if($schedule->is_recurring)
-                            <span class="badge bg-info ms-1" style="font-size: 0.7rem;" title="Recorrente: {{ $schedule->recurring_label }}">
+                            <span class="badge bg-info schedule-recurring-badge" title="Recorrente: {{ $schedule->recurring_label }}">
                                 <i class="bi bi-arrow-repeat"></i> {{ $schedule->recurring_label }}
                             </span>
                             @endif
                         </div>
                     </div>
                     
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="text-white fw-bold" style="font-size: 1.3rem;">
+                    <div class="schedule-footer">
+                        <div class="schedule-info">
+                            <div class="schedule-amount">
                                 {{ $schedule->formatted_amount }}
                             </div>
-                            <div class="text-white-50 small">
+                            <div class="schedule-meta">
                                 <i class="bi bi-calendar-event"></i> 
                                 {{ $schedule->scheduled_date->format('d/m/Y') }}
                                 @if($schedule->category)
-                                    • <i class="bi bi-tag"></i> {{ $schedule->category->name }}
+                                    <span class="schedule-category-separator">•</span>
+                                    <i class="bi bi-tag"></i> {{ $schedule->category->name }}
                                 @endif
                             </div>
                         </div>
                         
-                        <div class="d-flex gap-2">
+                        <div class="schedule-actions">
                             @if($schedule->is_cancelled)
-                            <span class="badge bg-secondary">
+                            <span class="badge bg-secondary schedule-status-badge">
                                 <i class="bi bi-x-circle"></i> Cancelado
                             </span>
                             @elseif(!$schedule->is_confirmed)
-                            <form action="{{ route('financial-schedule.confirm', $schedule->id) }}" method="POST" style="margin: 0;">
+                            <form action="{{ route('financial-schedule.confirm', $schedule->id) }}" method="POST" class="schedule-action-form">
                                 @csrf
-                                <button type="submit" class="btn btn-success btn-sm">
-                                    <i class="bi bi-check-circle"></i> Confirmar
+                                <button type="submit" class="btn btn-success btn-sm schedule-action-btn">
+                                    <i class="bi bi-check-circle"></i> <span class="schedule-btn-text">Confirmar</span>
                                 </button>
                             </form>
                             @else
-                            <form action="{{ route('financial-schedule.unconfirm', $schedule->id) }}" method="POST" style="margin: 0;">
+                            <form action="{{ route('financial-schedule.unconfirm', $schedule->id) }}" method="POST" class="schedule-action-form">
                                 @csrf
-                                <button type="submit" class="btn btn-secondary btn-sm" onclick="return confirm('Tem certeza que deseja desfazer a confirmação? A transação será removida do Fluxo de Caixa.')">
-                                    <i class="bi bi-arrow-counterclockwise"></i> Desfazer
+                                <button type="submit" class="btn btn-secondary btn-sm schedule-action-btn" onclick="return confirm('Tem certeza que deseja desfazer a confirmação? A transação será removida do Fluxo de Caixa.')">
+                                    <i class="bi bi-arrow-counterclockwise"></i> <span class="schedule-btn-text">Desfazer</span>
                                 </button>
                             </form>
                             @endif
                             
                             @if(!$schedule->is_cancelled && !$schedule->is_confirmed)
-                            <button type="button" class="btn btn-warning btn-sm" onclick="openCancelModal({{ $schedule->id }}, '{{ $schedule->title }}')">
-                                <i class="bi bi-x-circle"></i> Cancelar
+                            <button type="button" class="btn btn-warning btn-sm schedule-action-btn schedule-cancel-btn" onclick="openCancelModal({{ $schedule->id }}, '{{ $schedule->title }}')">
+                                <i class="bi bi-x-circle"></i> <span class="schedule-btn-text">Cancelar</span>
                             </button>
                             @endif
                             
-                            <form action="{{ route('financial-schedule.destroy', $schedule->id) }}" method="POST" style="margin: 0;" onsubmit="return confirm('Tem certeza que deseja excluir este item?')">
+                            <form action="{{ route('financial-schedule.destroy', $schedule->id) }}" method="POST" class="schedule-action-form" onsubmit="return confirm('Tem certeza que deseja excluir este item?')">
                                 @csrf
                                 @method('DELETE')
-                                <button type="submit" class="btn btn-danger btn-sm">
-                                    <i class="bi bi-trash"></i>
+                                <button type="submit" class="btn btn-danger btn-sm schedule-action-btn schedule-delete-btn">
+                                    <i class="bi bi-trash"></i> <span class="schedule-btn-text-mobile">Excluir</span>
                                 </button>
                             </form>
                         </div>

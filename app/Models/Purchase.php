@@ -12,6 +12,7 @@ class Purchase extends Model
     protected $fillable = [
         'product_id',
         'user_id',
+        'cashflow_id',
         'purchase_date',
         'price',
         'quantity',
@@ -35,5 +36,10 @@ class Purchase extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function cashflow()
+    {
+        return $this->belongsTo(CashFlow::class, 'cashflow_id');
     }
 }

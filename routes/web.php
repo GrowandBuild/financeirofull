@@ -11,6 +11,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/products/{product}', [ProductController::class, 'show'])->name('products.show');
     Route::get('/compra', [ProductController::class, 'compra'])->name('products.compra');
     Route::post('/compra/save', [ProductController::class, 'savePurchase'])->name('products.save-purchase');
+    Route::delete('/purchases/{purchase}', [ProductController::class, 'destroyPurchase'])->name('purchases.destroy');
     Route::get('/api/products', [ProductController::class, 'apiProducts'])->name('products.api');
 });
 

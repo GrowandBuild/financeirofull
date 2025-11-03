@@ -166,6 +166,15 @@
                             <div class="price-value">R$ {{ number_format($purchase->price ?? 0, 2, ',', '.') }}</div>
                             <div class="total-value">Total: R$ {{ number_format($purchase->total_value ?? 0, 2, ',', '.') }}</div>
                         </div>
+                        <div class="purchase-actions">
+                            <form action="{{ route('purchases.destroy', $purchase->id) }}" method="POST" class="d-inline" onsubmit="return confirmDeletePurchase()">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-danger" title="Excluir compra">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
                     </div>
                 @endforeach
             @else
@@ -213,6 +222,10 @@ function openSettings() {
 
 function openMenu() {
     alert('Menu de opções aberto!');
+}
+
+function confirmDeletePurchase() {
+    return confirm('Tem certeza que deseja excluir esta compra? A transação também será removida do fluxo de caixa.');
 }
 
 // Premium Chart.js Configuration

@@ -28,6 +28,9 @@
     <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}" id="main-css">
+    
     <!-- Chart.js para gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
@@ -39,54 +42,28 @@
     <style>
         body {
             background: linear-gradient(135deg, #1e3a8a, #1e40af, #3b82f6) !important;
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            min-height: 100vh;
         }
         
         .cashflow-container {
-            max-width: 100%;
-            width: 100%;
-            margin: 0;
-            min-height: 100vh;
             background: linear-gradient(135deg, #1e3a8a, #1e40af, #3b82f6);
-            position: relative;
-            padding-bottom: 80px;
-            box-sizing: border-box;
+            padding: 0 0.75rem;
         }
         
-        .header-cashflow {
-            background: rgba(30, 58, 138, 0.9) !important;
-            backdrop-filter: blur(10px);
-            padding: 0.75rem 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            position: relative;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        /* Compactar cards de resumo para 2 colunas em mobile */
+        @media (max-width: 768px) {
+            .col-md-4 {
+                flex: 0 0 50%;
+                max-width: 50%;
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+            }
         }
         
-        .online-indicator {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            font-weight: 600;
-            z-index: 1000;
-            transition: all 0.3s ease;
-        }
-        
-        .online-indicator.online {
-            background: #10b981;
-            color: white;
-        }
-        
-        .online-indicator.offline {
-            background: #ef4444;
-            color: white;
+        @media (max-width: 480px) {
+            .col-md-4 {
+                padding-left: 0.25rem;
+                padding-right: 0.25rem;
+            }
         }
         
         .card-cashflow {
@@ -146,41 +123,13 @@
             box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
         }
         
-        .btn-gold {
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
-        }
-        
-        .btn-gold:hover {
-            background: linear-gradient(135deg, #d97706, #b45309);
-            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.4);
-        }
-        
         .bottom-nav-cashflow {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            width: 100%;
-            max-width: 100%;
             background: rgba(30, 58, 138, 0.95) !important;
-            backdrop-filter: blur(10px);
-            padding: 0.5rem 0.5rem;
-            z-index: 1000;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            box-sizing: border-box;
         }
         
         .nav-item-cashflow {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
             text-decoration: none;
             color: white;
-            font-size: 0.625rem;
-            padding: 0.25rem;
-            min-height: 60px;
             transition: all 0.3s ease;
         }
         
@@ -202,310 +151,126 @@
         .nav-icon-cashflow {
             background: rgba(255, 255, 255, 0.2);
             border-radius: 0.5rem;
-            padding: 0.5rem;
-            margin-bottom: 0.25rem;
-            width: 2rem;
-            height: 2rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.875rem;
             transition: all 0.3s ease;
-        }
-        
-        .system-switcher {
-            position: fixed;
-            top: 1rem;
-            left: 1rem;
-            z-index: 1000;
-        }
-        
-        .system-switcher .btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        
-        .system-switcher .btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            color: #fbbf24;
-            transform: translateY(-1px);
-        }
-        
-        .system-switcher .btn.active {
-            background: linear-gradient(135deg, #fbbf24, #f59e0b);
-            color: #1e3a8a;
-            border-color: #fbbf24;
-        }
-        
-        /* Responsive adjustments */
-        @media (max-width: 575px) {
-            .bottom-nav-cashflow {
-                padding: 0.5rem 0.25rem;
-            }
-            
-            .nav-item-cashflow {
-                font-size: 0.5rem;
-                min-height: 55px;
-                padding: 0.125rem;
-            }
-            
-            .nav-icon-cashflow {
-                width: 1.75rem;
-                height: 1.75rem;
-                font-size: 0.75rem;
-                padding: 0.375rem;
-                margin-bottom: 0.125rem;
-            }
-        }
-        
-        @media (min-width: 576px) {
-            .bottom-nav-cashflow {
-                padding: 0.5rem 2rem;
-            }
-        }
-        
-        @media (min-width: 768px) {
-            .bottom-nav-cashflow {
-                padding: 0.75rem 3rem;
-            }
-            
-            .nav-item-cashflow {
-                font-size: 0.75rem;
-            }
-            
-            .nav-icon-cashflow {
-                width: 2rem;
-                height: 2rem;
-                font-size: 1rem;
-            }
-        }
-        
-        @media (min-width: 1024px) {
-            .bottom-nav-cashflow {
-                padding: 1rem 4rem;
-            }
-            
-            .nav-item-cashflow {
-                font-size: 0.875rem;
-            }
-            
-            .nav-icon-cashflow {
-                width: 2.25rem;
-                height: 2.25rem;
-                font-size: 1.125rem;
-            }
-        }
-        
-        @media (min-width: 1280px) {
-            .bottom-nav-cashflow {
-                padding: 1rem 6rem;
-            }
-        }
-        
-        /* Header Fixo */
-        .fixed-header {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(135deg, #1f2937, #374151);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            z-index: 1100;
-            padding: 1rem;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
-        
-        .header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .header-title h1 {
-            color: white;
-            font-size: 1.5rem;
-            font-weight: 700;
-            margin: 0;
-        }
-        
-        /* Sub-Header Integrado */
-        .sub-header-compact {
-            position: fixed;
-            top: calc(1rem + 1.5rem + 1rem + 0.25rem); /* header + pequeno espaçamento */
-            left: 0;
-            right: 0;
-            background: linear-gradient(135deg, #374151, #4b5563);
-            border-top: none;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-            z-index: 1050;
-            padding: 0.75rem 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            height: 3rem;
-            box-sizing: border-box;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            margin: 0;
-            transform: translateY(0);
-        }
-        
-        .sub-header-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        .nav-buttons {
-            display: flex;
-            gap: 0.5rem;
-        }
-        
-        .nav-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 0.35rem 0.75rem;
-            border-radius: 0.375rem;
-            font-size: 0.8rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 0.375rem;
-            height: 1.75rem;
-            box-sizing: border-box;
-        }
-        
-        .nav-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            color: #10b981;
-            transform: translateY(-1px);
-        }
-        
-        .nav-btn.active {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            border-color: #10b981;
-        }
-        
-        .header-controls {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .status-indicator {
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            font-weight: 600;
-            transition: all 0.3s ease;
-            background: #10b981;
-            color: white;
-            position: relative !important;
-            top: auto !important;
-            right: auto !important;
-            left: auto !important;
-            z-index: auto !important;
-        }
-        
-        .status-indicator.offline {
-            background: #ef4444;
-        }
-        
-        .cache-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            padding: 0.5rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .cache-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-1px);
-        }
-        
-        .cache-btn.dev:hover {
-            background: rgba(245, 158, 11, 0.8);
-            border-color: #f59e0b;
-        }
-        
-        /* Ajustar padding do body para o novo layout integrado */
-        body {
-            padding-top: calc(1rem + 1.5rem + 1rem + 0.25rem + 3rem) !important; /* Header + espaçamento + Sub-header */
-        }
-        
-        /* Esconder painéis antigos que causam sobreposição */
-        .cache-control-panel,
-        .simple-cache-control {
-            display: none !important;
-            visibility: hidden !important;
-            opacity: 0 !important;
-            pointer-events: none !important;
-        }
-        
-        /* Debug - garantir que o sub-header seja visível */
-        .sub-header * {
-            display: block !important;
-            visibility: visible !important;
-        }
-        
-        .nav-btn {
-            display: flex !important;
-            visibility: visible !important;
         }
     </style>
     </head>
 <body>
-    <!-- Header Fixo -->
-    <header class="fixed-header">
-        <div class="header-content">
-            <div class="header-title">
-                <h1>@yield('title', 'Fluxo de Caixa')</h1>
-            </div>
-        </div>
-    </header>
-    
-    <!-- Sub-Header Compacto -->
-    <div class="sub-header-compact">
-        <div class="nav-buttons">
-            <a href="{{ route('products.index') }}" class="nav-btn {{ request()->routeIs('products.*') ? 'active' : '' }}">
-                <i class="bi bi-box-seam"></i> Produtos
-            </a>
-            <a href="{{ route('cashflow.dashboard') }}" class="nav-btn {{ request()->routeIs('cashflow.*') ? 'active' : '' }}">
-                <i class="bi bi-cash-coin"></i> Fluxo de Caixa
-            </a>
-        </div>
+    <!-- Switcher de Sistemas -->
+    <div class="system-switcher">
+        <!-- Menu Hambúrguer -->
+        <button class="hamburger-menu" id="hamburgerMenu" onclick="toggleHamburgerMenu()" aria-label="Menu">
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <span class="hamburger-line"></span>
+            <!-- Fallback ícone caso CSS não carregue -->
+            <i class="bi bi-list hamburger-fallback" style="display: none;"></i>
+        </button>
         
-        <div class="header-controls">
-            <div id="online-status" class="status-indicator">
+        <!-- Total Mensal e Status -->
+        <div class="monthly-info">
+            @php
+                $currentMonth = \Carbon\Carbon::now();
+                $startOfMonth = $currentMonth->copy()->startOfMonth();
+                $endOfMonth = $currentMonth->copy()->endOfMonth();
+                
+                $monthlyIncome = auth()->check() 
+                    ? \App\Models\CashFlow::where('user_id', auth()->id())
+                        ->where('type', 'income')
+                        ->where('is_confirmed', true)
+                        ->whereBetween('transaction_date', [$startOfMonth, $endOfMonth])
+                        ->sum('amount')
+                    : 0;
+                
+                $monthlyExpense = auth()->check()
+                    ? \App\Models\CashFlow::where('user_id', auth()->id())
+                        ->where('type', 'expense')
+                        ->where('is_confirmed', true)
+                        ->whereBetween('transaction_date', [$startOfMonth, $endOfMonth])
+                        ->sum('amount')
+                    : 0;
+                
+                $monthlyBalance = $monthlyIncome - $monthlyExpense;
+            @endphp
+            <div class="monthly-balance">
+                <div class="balance-label">Total (Mês)</div>
+                <div class="balance-value">
+                    <i class="bi bi-cash-coin"></i>
+                    R$ {{ number_format($monthlyBalance, 2, ',', '.') }}
+                </div>
+            </div>
+            <div id="online-status" class="online-indicator">
                 <i class="bi bi-wifi"></i> Online
             </div>
-            <button onclick="clearAllCachesSimple()" class="cache-btn" title="Limpar Cache">
-                <i class="bi bi-arrow-clockwise"></i>
+        </div>
+    </div>
+    
+    <!-- Menu Lateral (Offcanvas) -->
+    <div class="hamburger-overlay" id="hamburgerOverlay" onclick="toggleHamburgerMenu()"></div>
+    <div class="hamburger-menu-panel" id="hamburgerMenuPanel">
+        <div class="hamburger-header">
+            <h3>Departamentos</h3>
+            <button class="hamburger-close" onclick="toggleHamburgerMenu()">
+                <i class="bi bi-x-lg"></i>
             </button>
-            <button onclick="toggleDevModeSimple()" class="cache-btn dev" id="simpleDevBtn" title="Modo Dev">
-                <i class="bi bi-code-slash"></i>
-            </button>
+        </div>
+        <div class="hamburger-content">
+            <a href="{{ route('products.index') }}" class="hamburger-menu-item {{ request()->routeIs('products.*') ? 'active' : '' }}">
+                <div class="menu-item-icon">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <div class="menu-item-content">
+                    <span class="menu-item-title">Produtos</span>
+                    <span class="menu-item-subtitle">Gerenciar produtos</span>
+                </div>
+            </a>
+            <a href="{{ route('cashflow.dashboard') }}" class="hamburger-menu-item {{ request()->routeIs('cashflow.*') ? 'active' : '' }}">
+                <div class="menu-item-icon">
+                    <i class="bi bi-cash-coin"></i>
+                </div>
+                <div class="menu-item-content">
+                    <span class="menu-item-title">Fluxo de Caixa</span>
+                    <span class="menu-item-subtitle">Controle financeiro</span>
+                </div>
+            </a>
+            @auth
+            <a href="{{ route('financial-schedule.index') }}" class="hamburger-menu-item {{ request()->routeIs('financial-schedule.*') ? 'active' : '' }}">
+                <div class="menu-item-icon">
+                    <i class="bi bi-calendar-event"></i>
+                    @php
+                        $notificationCount = \App\Models\FinancialSchedule::where('user_id', auth()->id())
+                            ->where('is_confirmed', false)
+                            ->where('scheduled_date', '<=', now()->addDays(7))
+                            ->count();
+                    @endphp
+                    @if($notificationCount > 0)
+                    <span class="menu-badge">{{ $notificationCount }}</span>
+                    @endif
+                </div>
+                <div class="menu-item-content">
+                    <span class="menu-item-title">Agenda</span>
+                    <span class="menu-item-subtitle">Lembretes e eventos</span>
+                </div>
+            </a>
+            <a href="{{ route('goals.index') }}" class="hamburger-menu-item {{ request()->routeIs('goals.*') ? 'active' : '' }}">
+                <div class="menu-item-icon">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div class="menu-item-content">
+                    <span class="menu-item-title">Monitoramento</span>
+                    <span class="menu-item-subtitle">Objetivos e metas</span>
+                </div>
+            </a>
+            <a href="{{ route('books.index') }}" class="hamburger-menu-item {{ request()->routeIs('books.*') ? 'active' : '' }}">
+                <div class="menu-item-icon">
+                    <i class="bi bi-book"></i>
+                </div>
+                <div class="menu-item-content">
+                    <span class="menu-item-title">Sabedoria</span>
+                    <span class="menu-item-subtitle">Livros e textos</span>
+                </div>
+            </a>
+            @endauth
         </div>
     </div>
     
@@ -554,7 +319,11 @@
     <!-- Bootstrap 5.3 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
+    <!-- Custom JavaScript -->
+    <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
+    
     @yield('scripts')
+    @stack('scripts')
     
     </body>
 </html>

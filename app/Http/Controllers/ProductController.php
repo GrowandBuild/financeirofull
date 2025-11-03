@@ -279,12 +279,33 @@ class ProductController extends Controller
                 }
             }
             
-            // Criar as compras e agrupar por departamento
-            $purchasesByDepartment = [];
+            // Criar as compras e seus cashflows
+            $cashFlows = [];
             
             foreach ($request->items as $item) {
+                // Buscar departamento do produto
+                $product = Product::find($item['product_id']);
+                $department = $product->goal_category ?? null;
+                
+                // Criar cashflow primeiro
+                $cashFlow = CashFlow::create([
+                    'user_id' => $userId,
+                    'type' => 'expense',
+                    'title' => "Compra - {$request->store}",
+                    'description' => isset($item['variant']) ? "Variante: {$item['variant']}" : $product->name,
+                    'amount' => $item['quantity'] * $item['price'],
+                    'category_id' => $purchaseCategory->id,
+                    'goal_category' => $department,
+                    'transaction_date' => $request->date ?? now(),
+                    'payment_method' => 'cash',
+                    'reference' => 'Compra via sistema',
+                    'is_confirmed' => true
+                ]);
+                
+                // Criar purchase com cashflow_id
                 $purchase = Purchase::create([
                     'user_id' => $userId,
+                    'cashflow_id' => $cashFlow->id,
                     'product_id' => $item['product_id'],
                     'quantity' => $item['quantity'],
                     'price' => $item['price'],
@@ -295,63 +316,23 @@ class ProductController extends Controller
                 ]);
                 
                 $purchases[] = $purchase;
+                $cashFlows[] = $cashFlow;
                 $totalAmount += $purchase->total_value;
                 
-                // Buscar departamento do produto
-                $product = Product::find($item['product_id']);
-                $department = $product->goal_category ?? null;
-                
-                if (!isset($purchasesByDepartment[$department])) {
-                    $purchasesByDepartment[$department] = 0;
-                }
-                $purchasesByDepartment[$department] += $purchase->total_value;
-            }
-            
-            // Criar entrada(s) no Fluxo de Caixa por departamento
-            try {
-                $cashFlows = [];
-                
-                foreach ($purchasesByDepartment as $department => $amount) {
-                    $cashFlow = CashFlow::create([
-                        'user_id' => $userId,
-                        'type' => 'expense',
-                        'title' => "Compra - {$request->store}",
-                        'description' => "Compra de " . count($request->items) . " item(ns) - " . implode(', ', array_column($request->items, 'variant')),
-                        'amount' => $amount,
-                        'category_id' => $purchaseCategory->id,
-                        'goal_category' => $department,
-                        'transaction_date' => $request->date ?? now(),
-                        'payment_method' => 'cash',
-                        'reference' => 'Compra via sistema',
-                        'is_confirmed' => true
-                    ]);
-                    
-                    $cashFlows[] = $cashFlow;
-                    
-                    \Log::info('Entrada criada no Fluxo de Caixa', [
-                        'cash_flow_id' => $cashFlow->id,
-                        'amount' => $amount,
-                        'department' => $department,
-                        'store' => $request->store
-                    ]);
-                }
-                
-            } catch (\Exception $e) {
-                \Log::error('Erro ao criar entrada no Fluxo de Caixa', [
-                    'error' => $e->getMessage(),
-                    'amount' => $totalAmount
+                \Log::info('Compra e cashflow criados', [
+                    'purchase_id' => $purchase->id,
+                    'cash_flow_id' => $cashFlow->id,
+                    'amount' => $purchase->total_value,
+                    'department' => $department,
+                    'store' => $request->store
                 ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Erro ao registrar no Fluxo de Caixa: ' . $e->getMessage()
-                ], 500);
             }
             
             return response()->json([
                 'success' => true,
                 'message' => 'Compra salva com sucesso e registrada no Fluxo de Caixa!',
                 'purchases' => $purchases,
-                'cash_flow_id' => $cashFlow->id
+                'cashflows' => $cashFlows
             ]);
             
         } catch (\Exception $e) {
@@ -364,6 +345,66 @@ class ProductController extends Controller
         }
     }
     
+    /**
+     * Excluir uma compra e seu fluxo de caixa associado
+     */
+    public function destroyPurchase(Purchase $purchase)
+    {
+        try {
+            // Verificar se o usuário tem permissão
+            if ($purchase->user_id !== auth()->id()) {
+                if (request()->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Você não tem permissão para excluir esta compra'
+                    ], 403);
+                }
+                return redirect()->back()->with('error', 'Você não tem permissão para excluir esta compra');
+            }
+
+            // Excluir o cashflow associado se existir
+            if ($purchase->cashflow_id) {
+                $cashFlow = CashFlow::find($purchase->cashflow_id);
+                if ($cashFlow) {
+                    $cashFlow->delete();
+                    \Log::info('Cashflow excluído junto com purchase', [
+                        'cashflow_id' => $purchase->cashflow_id,
+                        'purchase_id' => $purchase->id
+                    ]);
+                }
+            }
+
+            // Excluir a compra
+            $productId = $purchase->product_id;
+            $purchase->delete();
+
+            // Atualizar estatísticas do produto
+            $this->updateProductStats([$productId]);
+
+            \Log::info('Compra excluída com sucesso', ['purchase_id' => $purchase->id]);
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Compra excluída com sucesso'
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Compra excluída com sucesso');
+        } catch (\Exception $e) {
+            \Log::error('Erro ao excluir compra', ['error' => $e->getMessage()]);
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erro ao excluir compra: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Erro ao excluir compra');
+        }
+    }
+
     /**
      * Atualizar estatísticas dos produtos em lote
      */
