@@ -233,33 +233,45 @@
     <!-- Bootstrap 5.3 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- PWA Service Worker Registration -->
+    <!-- PWA Service Worker DESABILITADO - estava causando problemas -->
+    <!-- Service Worker desabilitado para evitar interferências com navegação e cliques -->
     <script>
-        // Registrar Service Worker
+        // Service Worker desabilitado
+        // Desregistrar qualquer Service Worker existente
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', async () => {
-                try {
-                    const registration = await navigator.serviceWorker.register('/sw.js');
-                    console.log('Service Worker registrado:', registration.scope);
-                    
-                    // Verificar atualizações
-                    registration.addEventListener('updatefound', () => {
-                        const newWorker = registration.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                // Nova versão disponível
-                                if (confirm('Nova versão disponível! Deseja atualizar?')) {
-                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                    window.location.reload();
-                                }
-                            }
-                        });
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for(let registration of registrations) {
+                    registration.unregister().then(function(boolean) {
+                        console.log('Service Worker desregistrado:', boolean);
                     });
-                } catch (error) {
-                    console.error('Erro ao registrar Service Worker:', error);
                 }
             });
         }
+        
+        // REFATORAÇÃO COMPLETA - Sistema limpo sem interceptações problemáticas
+        document.addEventListener('DOMContentLoaded', function() {
+            // PROTEÇÃO: Garantir que formulários NUNCA sejam interceptados
+            // Não adicionar NENHUM listener em formulários ou seus botões
+            
+            // PROTEÇÃO: Garantir que links da navegação inferior funcionem
+            // Usar delegation simples e específico apenas para links de navegação
+            const bottomNav = document.querySelector('.bottom-nav');
+            if (bottomNav) {
+                // Apenas para links da navegação - não interfere com nada mais
+                bottomNav.addEventListener('click', function(e) {
+                    const clickedElement = e.target;
+                    // Verificar se é um link da navegação
+                    if (clickedElement.tagName === 'A' && clickedElement.classList.contains('nav-item-custom')) {
+                        // Link da navegação - permitir comportamento padrão
+                        // Não fazer nada - deixar o navegador processar normalmente
+                        return true;
+                    }
+                    // Se não for link de navegação, permitir comportamento padrão
+                    return true;
+                }, false);
+            }
+        });
+    </script>
         
     @yield('scripts')
     @stack('scripts')

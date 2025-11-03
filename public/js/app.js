@@ -299,9 +299,9 @@ const PerformanceOptimizer = {
     init() {
         this.preloadCriticalResources();
         this.optimizeImages();
-        this.setupPrefetching();
-        this.setupPagePrefetching();
-        this.optimizePageTransitions();
+        // this.setupPrefetching(); // DESABILITADO - pode interferir
+        // this.setupPagePrefetching(); // DESABILITADO - pode interferir (adiciona event listeners que podem causar problemas)
+        this.optimizePageTransitions(); // Apenas setupLoadingStates, sem navegação AJAX
     },
     
     preloadCriticalResources() {
@@ -357,28 +357,11 @@ const PerformanceOptimizer = {
         });
     },
     
+    // setupPagePrefetching() DESABILITADO - estava adicionando listeners em todos os links
+    // Isso poderia interferir com formulários e outros elementos
     setupPagePrefetching() {
-        // Prefetch inteligente baseado em hover
-        const navLinks = document.querySelectorAll('a[href^="/"]');
-        
-        navLinks.forEach(link => {
-            let prefetchTimeout;
-            
-            link.addEventListener('mouseenter', () => {
-                prefetchTimeout = setTimeout(() => {
-                    this.prefetchPage(link.href);
-                }, 100); // 100ms de delay
-            });
-            
-            link.addEventListener('mouseleave', () => {
-                clearTimeout(prefetchTimeout);
-            });
-            
-            // Prefetch ao clicar (para acelerar)
-            link.addEventListener('click', (e) => {
-                this.prefetchPage(link.href);
-            });
-        });
+        // DESABILITADO - não adicionar listeners que possam interferir
+        return;
     },
     
     prefetchPage(url) {
@@ -397,79 +380,37 @@ const PerformanceOptimizer = {
     },
     
     optimizePageTransitions() {
+        // NAVEGAÇÃO AJAX DESABILITADA - usando navegação normal do navegador
+        // Isso evita problemas com event listeners e funcionalidades que dependem de recarregamento da página
         // Transições suaves entre páginas
-        this.setupPageTransition();
+        // this.setupPageTransition(); // DESABILITADO - causava problemas
         this.setupLoadingStates();
     },
     
+    // setupPageTransition() DESABILITADO - navegação AJAX causava problemas
+    // Todos os links agora usam navegação normal do navegador (window.location.href)
     setupPageTransition() {
-        // Interceptar cliques em links
-        document.addEventListener('click', (e) => {
-            const link = e.target.closest('a[href^="/"]');
-            if (!link) return;
-            
-            e.preventDefault();
-            this.navigateToPage(link.href);
-        });
+        // CÓDIGO DESABILITADO - usando navegação normal do navegador
+        // A navegação AJAX estava interferindo com event listeners e funcionalidades
+        return;
     },
     
+    // Navegação AJAX DESABILITADA - sempre usar navegação normal do navegador
     async navigateToPage(url) {
-        // Mostrar loading
-        this.showPageLoading();
-        
-        try {
-            // Tentar buscar do cache primeiro
-            let response = await this.getFromCache(url);
-            
-            if (!response) {
-                // Se não tem cache, buscar da rede
-                response = await fetch(url, {
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'text/html'
-                    }
-                });
-                
-                if (response.ok) {
-                    // Cachear a resposta
-                    this.cachePage(url, response.clone());
-                }
-            }
-            
-            if (response && response.ok) {
-                const html = await response.text();
-                this.updatePageContent(html);
-                this.hidePageLoading();
-                
-                // Atualizar URL sem recarregar
-                history.pushState(null, '', url);
-            } else {
-                // Fallback para navegação normal
-                window.location.href = url;
-            }
-        } catch (error) {
-            console.error('Erro na navegação:', error);
-            // Fallback para navegação normal
-            window.location.href = url;
-        }
+        // Navegação AJAX desabilitada - usar sempre navegação normal
+        // Isso evita problemas com event listeners e funcionalidades
+        window.location.href = url;
     },
     
+    // Métodos de cache DESABILITADOS - estavam causando problemas
     async getFromCache(url) {
-        try {
-            const cache = await caches.open('produtos-dynamic-v2');
-            return await cache.match(url);
-        } catch (error) {
-            return null;
-        }
+        // Cache desabilitado - retornar null para usar sempre navegação normal
+        return null;
     },
     
     async cachePage(url, response) {
-        try {
-            const cache = await caches.open('produtos-dynamic-v2');
-            await cache.put(url, response);
-        } catch (error) {
-            console.error('Erro ao cachear página:', error);
-        }
+        // Cache de páginas desabilitado - não fazer nada
+        return;
     },
     
     updatePageContent(html) {
@@ -541,11 +482,11 @@ const App = {
         SearchManager.init();
         LazyImageLoader.init();
         ErrorHandler.init();
-        PerformanceOptimizer.init();
+        PerformanceOptimizer.init(); // Reativado, mas navegação AJAX está desabilitada
         HamburgerMenuManager.init();
         
-        // Service Worker desabilitado - remover cache personalizado
-        // ServiceWorkerManager.register();
+        // Service Worker completamente desabilitado - estava causando problemas
+        // ServiceWorkerManager.register(); // DESABILITADO
         
         // Animar elementos na página
         this.animatePageElements();
