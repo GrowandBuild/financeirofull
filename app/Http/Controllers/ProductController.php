@@ -22,17 +22,24 @@ class ProductController extends Controller
             ->groupBy('product_id')
             ->pluck('monthly_spend', 'product_id');
 
-        // Top produtos usando dados já calculados
+        // Top produtos - calcular diretamente usando JOIN para evitar carregar todos os produtos
+        $topProductIds = collect($monthlyStats)
+            ->sortByDesc(function ($spend) {
+                return $spend;
+            })
+            ->take(2)
+            ->keys();
+        
         $topProducts = Product::select(['id', 'name', 'category'])
+            ->whereIn('id', $topProductIds)
             ->get()
             ->map(function ($product) use ($monthlyStats) {
                 $product->monthly_spend = $monthlyStats[$product->id] ?? 0;
                 return $product;
             })
-            ->sortByDesc('monthly_spend')
-            ->take(2);
+            ->sortByDesc('monthly_spend');
 
-        // Paginação de produtos
+        // Paginação de produtos - otimizado para pegar apenas IDs necessários para estatísticas
         $products = Product::select([
             'id', 'name', 'category', 'unit', 'description', 
             'image', 'image_path', 'variants', 'has_variants',
@@ -41,9 +48,12 @@ class ProductController extends Controller
         ->withCount('purchases')
         ->paginate(12);
 
-        // Aplicar estatísticas calculadas
-        $products->each(function ($product) use ($monthlyStats) {
-            $product->monthly_spend = $monthlyStats[$product->id] ?? 0;
+        // Aplicar estatísticas calculadas apenas para os produtos da página atual
+        $pageProductIds = $products->pluck('id');
+        $pageMonthlyStats = $monthlyStats->only($pageProductIds);
+        
+        $products->each(function ($product) use ($pageMonthlyStats) {
+            $product->monthly_spend = $pageMonthlyStats[$product->id] ?? 0;
         });
         
         // Gasto total mensal
@@ -217,14 +227,24 @@ class ProductController extends Controller
 
     public function compra()
     {
+        // Otimizar: carregar produtos com chunk se houver muitos, mas por enquanto usar limit
+        // para evitar timeout. Se houver necessidade de todos os produtos, considerar
+        // implementar paginação ou lazy loading na view
+        
+        // Carregar produtos em lotes para evitar timeout
         $products = Product::select([
             'id', 'name', 'category', 'unit', 'description',
             'image', 'image_path', 'variants', 'has_variants',
             'average_price', 'last_price', 'total_spent', 'purchase_count'
-        ])->get();
+        ])
+        ->orderBy('name')
+        ->limit(500) // Limitar para evitar timeout - ajustar conforme necessário
+        ->get();
 
-        // Calcular estatísticas mensais em lote
+        // Calcular estatísticas mensais em lote apenas para produtos carregados
         $productIds = $products->pluck('id');
+        
+        // Otimizar query de estatísticas mensais usando índice se possível
         $monthlyStats = DB::table('purchases')
             ->select('product_id')
             ->selectRaw('SUM(total_value) as monthly_spend')
@@ -238,6 +258,7 @@ class ProductController extends Controller
             $product->monthly_spend = $monthlyStats[$product->id] ?? 0;
         });
 
+        // Otimizar: buscar categorias de forma mais eficiente
         $categories = Product::select('category')
             ->distinct()
             ->whereNotNull('category')

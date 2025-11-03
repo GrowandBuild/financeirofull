@@ -8,7 +8,7 @@
     <div class="header-content">
         <div class="header-title">
             <h1>Agenda Financeira</h1>
-            <span class="header-subtitle">{{ $schedules->count() }} itens neste mês</span>
+            <span class="header-subtitle">{{ ($incomes->count() + $expenses->count()) }} itens neste mês</span>
         </div>
         <div class="header-actions">
             <a href="{{ route('financial-schedule.create') }}" class="action-btn" style="background: #10b981; border-radius: 50%; width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;">
@@ -30,102 +30,49 @@
     </div>
     @endif
 
-    <!-- Lista de Itens Agendados -->
-    @if($schedules->count() > 0)
-        @foreach($schedules as $schedule)
-        <div class="premium-product-card schedule-card" style="margin-bottom: 15px;">
-            <div class="schedule-card-content">
-                <!-- Imagem se houver -->
-                @if($schedule->image_path)
-                <div class="schedule-image-wrapper">
-                    <img src="{{ asset('storage/' . $schedule->image_path) }}" 
-                         alt="{{ $schedule->title }}" 
-                         class="schedule-image">
-                </div>
-                @endif
-                
-                <div class="schedule-main-content">
-                    <div class="schedule-header">
-                        <div class="schedule-title-section">
-                            <h4 class="schedule-title">
-                                {{ $schedule->title }}
-                                @if($schedule->is_cancelled)
-                                    <span class="badge bg-secondary schedule-badge-cancelled">
-                                        <i class="bi bi-x-circle"></i> Cancelado
-                                    </span>
-                                @endif
-                            </h4>
-                            @if($schedule->description)
-                            <p class="schedule-description">{{ $schedule->description }}</p>
-                            @endif
-                        </div>
-                        <div class="schedule-badges-top">
-                            <span class="badge {{ $schedule->type === 'income' ? 'bg-success' : 'bg-danger' }} schedule-type-badge">
-                                {{ $schedule->type_label }}
-                            </span>
-                            @if($schedule->is_recurring)
-                            <span class="badge bg-info schedule-recurring-badge" title="Recorrente: {{ $schedule->recurring_label }}">
-                                <i class="bi bi-arrow-repeat"></i> {{ $schedule->recurring_label }}
-                            </span>
-                            @endif
-                        </div>
-                    </div>
-                    
-                    <div class="schedule-footer">
-                        <div class="schedule-info">
-                            <div class="schedule-amount">
-                                {{ $schedule->formatted_amount }}
-                            </div>
-                            <div class="schedule-meta">
-                                <i class="bi bi-calendar-event"></i> 
-                                {{ $schedule->scheduled_date->format('d/m/Y') }}
-                                @if($schedule->category)
-                                    <span class="schedule-category-separator">•</span>
-                                    <i class="bi bi-tag"></i> {{ $schedule->category->name }}
-                                @endif
-                            </div>
-                        </div>
-                        
-                        <div class="schedule-actions">
-                            @if($schedule->is_cancelled)
-                            <span class="badge bg-secondary schedule-status-badge">
-                                <i class="bi bi-x-circle"></i> Cancelado
-                            </span>
-                            @elseif(!$schedule->is_confirmed)
-                            <form action="{{ route('financial-schedule.confirm', $schedule->id) }}" method="POST" class="schedule-action-form">
-                                @csrf
-                                <button type="submit" class="btn btn-success btn-sm schedule-action-btn">
-                                    <i class="bi bi-check-circle"></i> <span class="schedule-btn-text">Confirmar</span>
-                                </button>
-                            </form>
-                            @else
-                            <form action="{{ route('financial-schedule.unconfirm', $schedule->id) }}" method="POST" class="schedule-action-form">
-                                @csrf
-                                <button type="submit" class="btn btn-secondary btn-sm schedule-action-btn" onclick="return confirm('Tem certeza que deseja desfazer a confirmação? A transação será removida do Fluxo de Caixa.')">
-                                    <i class="bi bi-arrow-counterclockwise"></i> <span class="schedule-btn-text">Desfazer</span>
-                                </button>
-                            </form>
-                            @endif
-                            
-                            @if(!$schedule->is_cancelled && !$schedule->is_confirmed)
-                            <button type="button" class="btn btn-warning btn-sm schedule-action-btn schedule-cancel-btn" onclick="openCancelModal({{ $schedule->id }}, '{{ $schedule->title }}')">
-                                <i class="bi bi-x-circle"></i> <span class="schedule-btn-text">Cancelar</span>
-                            </button>
-                            @endif
-                            
-                            <form action="{{ route('financial-schedule.destroy', $schedule->id) }}" method="POST" class="schedule-action-form" onsubmit="return confirm('Tem certeza que deseja excluir este item?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="btn btn-danger btn-sm schedule-action-btn schedule-delete-btn">
-                                    <i class="bi bi-trash"></i> <span class="schedule-btn-text-mobile">Excluir</span>
-                                </button>
-                            </form>
-                        </div>
-                    </div>
-                </div>
+    <!-- Grid de 2 Colunas: Entradas e Saídas -->
+    @if($incomes->count() > 0 || $expenses->count() > 0)
+    <div class="row g-3 schedule-grid">
+        <!-- Coluna Esquerda: Entradas -->
+        <div class="col-md-6 schedule-column">
+            <div class="schedule-column-header">
+                <h3 class="schedule-column-title">
+                    <i class="bi bi-arrow-down-circle text-success"></i> Entradas
+                </h3>
+                <span class="schedule-column-count">{{ $incomes->count() }}</span>
             </div>
+            
+            @if($incomes->count() > 0)
+                @foreach($incomes as $schedule)
+                @include('financial-schedule.partials.schedule-card', ['schedule' => $schedule])
+                @endforeach
+            @else
+                <div class="no-schedules-message">
+                    <p class="text-muted">Nenhuma entrada agendada</p>
+                </div>
+            @endif
         </div>
-        @endforeach
+        
+        <!-- Coluna Direita: Saídas -->
+        <div class="col-md-6 schedule-column">
+            <div class="schedule-column-header">
+                <h3 class="schedule-column-title">
+                    <i class="bi bi-arrow-up-circle text-danger"></i> Saídas
+                </h3>
+                <span class="schedule-column-count">{{ $expenses->count() }}</span>
+            </div>
+            
+            @if($expenses->count() > 0)
+                @foreach($expenses as $schedule)
+                @include('financial-schedule.partials.schedule-card', ['schedule' => $schedule])
+                @endforeach
+            @else
+                <div class="no-schedules-message">
+                    <p class="text-muted">Nenhuma saída agendada</p>
+                </div>
+            @endif
+        </div>
+    </div>
     @else
         <div class="no-data-card">
             <div class="no-data-icon">
@@ -175,6 +122,69 @@
         </div>
     </div>
 </div>
+
+@push('styles')
+<style>
+    /* Grid de 2 Colunas */
+    .schedule-grid {
+        margin-top: 20px;
+    }
+    
+    .schedule-column {
+        padding: 0 10px;
+    }
+    
+    .schedule-column-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .schedule-column-title {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: white;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    
+    .schedule-column-count {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+    
+    .no-schedules-message {
+        text-align: center;
+        padding: 20px;
+        color: rgba(255, 255, 255, 0.6);
+    }
+    
+    /* Responsivo: Em mobile, as colunas ficam empilhadas */
+    @media (max-width: 768px) {
+        .schedule-column {
+            padding: 0;
+            margin-bottom: 20px;
+        }
+        
+        .schedule-column-header {
+            margin-bottom: 10px;
+        }
+        
+        .schedule-column-title {
+            font-size: 1.1rem;
+        }
+    }
+</style>
+@endpush
 
 @push('scripts')
 <script>

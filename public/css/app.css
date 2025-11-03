@@ -9,6 +9,138 @@ body,html{overflow-x:hidden;max-width:100vw;width:100%}
 img,svg,video,iframe{max-width:100%;height:auto}
 div,section,article,main,aside,header,footer,nav{max-width:100%;box-sizing:border-box}
 
+/* ===================================
+   PAGINAÇÃO TAILWIND - CORREÇÃO BASEADA NO HTML REAL
+   ZERO CONFLITOS - APENAS ELEMENTOS FINAIS
+   =================================== */
+
+/* Container principal - layout flexível */
+nav[role="navigation"][aria-label*="Pagination"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+/* Divs internas - sem restrições */
+nav[role="navigation"][aria-label*="Pagination"] > div {
+    max-width: 100% !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+/* Container de botões span.z-0 - APENAS layout, SEM tamanho fixo */
+nav[role="navigation"][aria-label*="Pagination"] span.relative.z-0.inline-flex {
+    display: inline-flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.25rem !important;
+    max-width: 100% !important;
+    overflow: visible !important;
+    box-sizing: border-box !important;
+    width: auto !important;
+    height: auto !important;
+    min-width: auto !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    align-items: center !important;
+}
+
+/* Wrappers span[aria-disabled] e span[aria-current] - SEM tamanho fixo */
+nav[role="navigation"][aria-label*="Pagination"] span.relative.z-0.inline-flex > span[aria-disabled],
+nav[role="navigation"][aria-label*="Pagination"] span.relative.z-0.inline-flex > span[aria-current] {
+    width: auto !important;
+    height: auto !important;
+    min-width: auto !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+/* APENAS elementos finais .relative.inline-flex DENTRO do container .z-0 */
+/* Links diretos (Previous/Next e números de página) */
+nav[role="navigation"][aria-label*="Pagination"] span.relative.z-0.inline-flex > a.relative.inline-flex {
+    min-width: 2.5rem !important;
+    max-width: 2.5rem !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.5rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    font-size: 0.875rem !important;
+    line-height: 1 !important;
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
+    text-align: center !important;
+}
+
+/* Spans finais .relative.inline-flex DENTRO de wrappers */
+nav[role="navigation"][aria-label*="Pagination"] span.relative.z-0.inline-flex > span > span.relative.inline-flex {
+    min-width: 2.5rem !important;
+    max-width: 2.5rem !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.5rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+    font-size: 0.875rem !important;
+    line-height: 1 !important;
+    flex-shrink: 0 !important;
+    overflow: hidden !important;
+    text-align: center !important;
+}
+
+/* Versão Mobile - botões simples */
+nav[role="navigation"][aria-label*="Pagination"] > div.flex.justify-between.flex-1 > a.relative.inline-flex,
+nav[role="navigation"][aria-label*="Pagination"] > div.flex.justify-between.flex-1 > span.relative.inline-flex {
+    min-width: auto !important;
+    max-width: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 0.5rem 1rem !important;
+}
+
+/* SVGs - tamanho fixo e controlado */
+nav[role="navigation"][aria-label*="Pagination"] svg {
+    width: 1rem !important;
+    height: 1rem !important;
+    max-width: 1rem !important;
+    max-height: 1rem !important;
+    min-width: 1rem !important;
+    min-height: 1rem !important;
+    flex-shrink: 0 !important;
+    display: block !important;
+    box-sizing: border-box !important;
+}
+
+/* Mobile - Paginação Compacta */
+@media (max-width: 640px) {
+    nav[role="navigation"][aria-label*="Pagination"] span.relative.z-0.inline-flex > a.relative.inline-flex,
+    nav[role="navigation"][aria-label*="Pagination"] span.relative.z-0.inline-flex > span > span.relative.inline-flex {
+        min-width: 2rem !important;
+        max-width: 2rem !important;
+        width: 2rem !important;
+        height: 2rem !important;
+        padding: 0.375rem !important;
+        font-size: 0.75rem !important;
+    }
+    
+    nav[role="navigation"][aria-label*="Pagination"] svg {
+        width: 0.875rem !important;
+        height: 0.875rem !important;
+        max-width: 0.875rem !important;
+        max-height: 0.875rem !important;
+        min-width: 0.875rem !important;
+        min-height: 0.875rem !important;
+    }
+}
+
 body{background:#1f2937!important;color:#fff;font-family:system-ui,-apple-system,sans-serif;min-height:100vh;line-height:1.6;padding-top:4.5rem}
 
 /* Container Principal */
@@ -776,15 +908,15 @@ body{background:#1f2937!important;color:#fff;font-family:system-ui,-apple-system
 
 /* Bottom Navigation */
 .bottom-nav {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    width: 100%;
-    max-width: 100%;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
     background-color: #1f2937 !important;
     padding: 0.5rem 0.5rem;
-    z-index: 1000;
+    z-index: 1000 !important;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     box-sizing: border-box;
 }
@@ -2643,18 +2775,21 @@ body, html {
 
 /* ===================================
    PAGINAÇÃO OTIMIZADA - PERFORMANCE
+   Sobrescreve Bootstrap 5.3
    =================================== */
 .pagination {
-    margin-bottom: 0;
-    justify-content: center;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    overflow: hidden;
-    contain: layout style paint;
+    margin-bottom: 0 !important;
+    justify-content: center !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 0.25rem !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow: visible !important;
+    contain: none !important;
+    list-style: none !important;
+    padding: 0 !important;
 }
 
 .pagination nav {
@@ -2667,40 +2802,65 @@ body, html {
 .pagination ul,
 .pagination ol,
 .pagination li {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    max-width: 100%;
-    box-sizing: border-box;
+    margin: 0 !important;
+    padding: 0 !important;
+    list-style: none !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    display: inline-flex !important;
+    flex-shrink: 0 !important;
+}
+
+/* Garantir que elementos li não tenham padding extra */
+.pagination > li,
+.pagination li {
+    margin: 0 !important;
+    padding: 0 !important;
 }
 
 .pagination .page-item {
-    display: inline-flex;
-    margin: 0;
-    max-width: 100%;
-    box-sizing: border-box;
+    display: inline-flex !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
 }
 
-.pagination .page-link {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 0.5rem 0.75rem;
-    border-radius: 8px;
-    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
-    min-width: 2.5rem;
-    max-width: 100%;
-    text-align: center;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    box-sizing: border-box;
-    font-size: 0.875rem;
-    line-height: 1;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+.pagination li {
+    display: inline-flex !important;
+    flex-shrink: 0 !important;
+    list-style: none !important;
+}
+
+/* TODOS os links e elementos clicáveis da paginação - sem conflitos */
+.pagination .page-link,
+.pagination li a,
+.pagination a {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    padding: 0.5rem 0.75rem !important;
+    border-radius: 8px !important;
+    transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease !important;
+    min-width: 2.5rem !important;
+    max-width: 2.5rem !important;
+    width: auto !important;
+    height: auto !important;
+    max-height: 3rem !important;
+    min-height: 2.5rem !important;
+    text-align: center !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-decoration: none !important;
+    box-sizing: border-box !important;
+    font-size: 0.875rem !important;
+    line-height: 1.2 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    flex-shrink: 0 !important;
+    position: relative !important;
 }
 
 .pagination .page-link:hover {
@@ -2711,19 +2871,47 @@ body, html {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.pagination .page-item.active .page-link {
-    background: linear-gradient(135deg, #10b981, #059669);
-    border-color: #10b981;
-    color: white;
-    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);
+.pagination .page-item.active .page-link,
+.pagination li.active .page-link,
+.pagination li.active span,
+.pagination li.active a,
+.pagination li[aria-current="page"] .page-link,
+.pagination li[aria-current="page"] span,
+.pagination li[aria-current="page"] a {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    border-color: #10b981 !important;
+    color: white !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+    min-width: 2.5rem !important;
+    max-width: 2.5rem !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
 }
 
-.pagination .page-item.disabled .page-link {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.3);
-    cursor: not-allowed;
-    pointer-events: none;
+.pagination .page-item.disabled .page-link,
+.pagination li.disabled .page-link,
+.pagination li.disabled span,
+.pagination li.disabled a,
+.pagination li[aria-disabled="true"] .page-link,
+.pagination li[aria-disabled="true"] span,
+.pagination li[aria-disabled="true"] a {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    color: rgba(255, 255, 255, 0.3) !important;
+    cursor: not-allowed !important;
+    pointer-events: none !important;
+    min-width: 2.5rem !important;
+    max-width: 2.5rem !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.5rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
 }
 
 .pagination .page-item.disabled .page-link:hover {
@@ -2731,11 +2919,87 @@ body, html {
     box-shadow: none;
 }
 
-.pagination .page-link span {
-    display: inline-block;
-    max-width: 100%;
-    overflow: hidden;
-    text-overflow: ellipsis;
+/* TODOS os spans e elementos de texto dentro de paginação - FORÇAR tamanho */
+.pagination .page-link span,
+.pagination a span,
+.pagination li span,
+.pagination span[aria-hidden="true"],
+.pagination li > span,
+.pagination li > a > span {
+    display: inline-block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
+    flex-shrink: 0 !important;
+}
+
+/* Especificamente para caracteres de seta - FORÇAR tamanho pequeno */
+.pagination li:first-child span,
+.pagination li:last-child span,
+.pagination li:first-child a,
+.pagination li:last-child a {
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    width: auto !important;
+    height: auto !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+
+/* Garantir que setas de navegação não cresçam demais - TODOS os casos */
+.pagination li:first-child > *,
+.pagination li:last-child > *,
+.pagination li:first-child .page-link,
+.pagination li:first-child a,
+.pagination li:first-child span,
+.pagination li:last-child .page-link,
+.pagination li:last-child a,
+.pagination li:last-child span,
+.pagination .page-link[rel="prev"],
+.pagination .page-link[rel="next"],
+.pagination a[rel="prev"],
+.pagination a[rel="next"],
+.pagination .page-link[aria-label*="previous"],
+.pagination .page-link[aria-label*="next"],
+.pagination a[aria-label*="previous"],
+.pagination a[aria-label*="next"],
+.pagination li span[aria-label*="previous"],
+.pagination li span[aria-label*="next"],
+.pagination li[aria-label*="previous"] > *,
+.pagination li[aria-label*="next"] > * {
+    min-width: 2.5rem !important;
+    max-width: 2.5rem !important;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0.5rem !important;
+    font-size: 1rem !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
+}
+
+/* Corrigir caracteres de seta que crescem demais */
+.pagination .page-link span,
+.pagination a span,
+.pagination li span {
+    display: inline-block !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    font-size: inherit !important;
+    line-height: 1 !important;
+    width: auto !important;
+    height: auto !important;
 }
 
 /* Mobile - Paginação Compacta */
@@ -2749,7 +3013,18 @@ body, html {
         padding: 0.375rem 0.5rem;
         font-size: 0.75rem;
         min-width: 2rem;
-        max-width: 3rem;
+        max-width: 2.5rem;
+        width: auto;
+    }
+    
+    .pagination .page-link[rel="prev"],
+    .pagination .page-link[rel="next"] {
+        min-width: 2rem;
+        max-width: 2rem;
+        width: 2rem;
+        height: 2rem;
+        padding: 0.375rem;
+        font-size: 0.875rem;
     }
 }
 
@@ -2763,10 +3038,350 @@ body, html {
         padding: 0.3rem 0.4rem;
         font-size: 0.7rem;
         min-width: 1.75rem;
-        max-width: 2.5rem;
+        max-width: 2rem;
+        width: auto;
+    }
+    
+    .pagination .page-link[rel="prev"],
+    .pagination .page-link[rel="next"] {
+        min-width: 1.75rem;
+        max-width: 1.75rem;
+        width: 1.75rem;
+        height: 1.75rem;
+        padding: 0.3rem;
+        font-size: 0.75rem;
     }
     
     .pagination .page-link span {
         font-size: 0.7rem;
+    }
+}
+
+/* ===================================
+   CASHFLOW - ESTILOS UNIFICADOS
+   =================================== */
+body.cashflow-body,
+.cashflow-body {
+    background: linear-gradient(135deg, #0a0a0a, #1a1a1a, #2d2d2d) !important;
+}
+
+.cashflow-container {
+    background: linear-gradient(135deg, #0a0a0a, #1a1a1a, #2d2d2d);
+    padding: 0 0.75rem 80px;
+    min-height: 100vh;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
+@media (max-width: 768px) {
+    .cashflow-container {
+        padding: 0 0.5rem 80px;
+    }
+    .cashflow-container .col-md-4 {
+        flex: 0 0 50%;
+        max-width: 50%;
+        padding-left: 0.375rem;
+        padding-right: 0.375rem;
+    }
+}
+
+@media (max-width: 576px) {
+    .cashflow-container {
+        padding: 0 0.5rem 80px;
+    }
+    .cashflow-container .col-md-4 {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .cashflow-container {
+        padding: 0 0.375rem 75px;
+    }
+    .cashflow-container .col-md-4 {
+        padding-left: 0.25rem;
+        padding-right: 0.25rem;
+        gap: 0.5rem;
+    }
+}
+
+@media (max-width: 375px) {
+    .cashflow-container {
+        padding: 0 0.25rem 70px;
+    }
+    .cashflow-container .col-md-4 {
+        padding-left: 0.125rem;
+        padding-right: 0.125rem;
+    }
+}
+
+@media (min-width: 1024px) {
+    .cashflow-container {
+        padding: 0 1.5rem 90px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+}
+
+@media (min-width: 1280px) {
+    .cashflow-container {
+        padding: 0 2rem 100px;
+    }
+}
+
+.card-cashflow {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 1rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.card-cashflow:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+@media (max-width: 768px) {
+    .card-cashflow {
+        border-radius: 0.875rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-cashflow {
+        border-radius: 0.75rem;
+        margin-bottom: 0.75rem;
+    }
+}
+
+.btn-cashflow {
+    background: linear-gradient(135deg, #2d2d2d, #1a1a1a);
+    border: none;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: transform 0.2s ease, background-color 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    justify-content: center;
+    white-space: nowrap;
+    font-size: 0.875rem;
+}
+
+@media (max-width: 768px) {
+    .btn-cashflow {
+        padding: 0.625rem 1.25rem;
+        font-size: 0.8125rem;
+        border-radius: 0.625rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .btn-cashflow {
+        padding: 0.5rem 1rem;
+        font-size: 0.75rem;
+        border-radius: 0.5rem;
+        gap: 0.375rem;
+    }
+}
+
+.btn-cashflow:hover {
+    background: linear-gradient(135deg, #3d3d3d, #2d2d2d);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    color: white;
+}
+
+.btn-income {
+    background: linear-gradient(135deg, #10b981, #059669);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+}
+
+.btn-income:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-expense {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+.btn-expense:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+/* ===================================
+   FRASES DE GESTÃO FINANCEIRA
+   =================================== */
+.finance-quotes-mobile {
+    display: none;
+    flex: 1;
+    margin: 0 0.75rem;
+    overflow: hidden;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.quote-container {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.75rem;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    overflow: hidden;
+    animation: fadeInQuote 0.5s ease-in-out;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    min-height: 2rem;
+}
+
+.quote-icon {
+    color: #10b981;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.quote-text-wrapper {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    position: relative;
+}
+
+.quote-text {
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 500;
+    opacity: 0.9;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.quote-text-wrapper.scroll-mode {
+    overflow: hidden;
+}
+
+.quote-text-wrapper.scroll-mode .quote-text {
+    display: inline-block;
+    white-space: nowrap;
+    -webkit-line-clamp: unset;
+    -webkit-box-orient: unset;
+    animation: scrollHorizontal 15s linear infinite;
+    animation-delay: 2s;
+    cursor: pointer;
+    padding-right: 2rem;
+}
+
+@keyframes scrollHorizontal {
+    0% { transform: translateX(0); }
+    20% { transform: translateX(0); }
+    80% { transform: translateX(var(--scroll-amount, -200px)); }
+    100% { transform: translateX(0); }
+}
+
+@keyframes fadeInQuote {
+    from {
+        opacity: 0;
+        transform: translateX(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@media (max-width: 768px) {
+    .finance-quotes-mobile {
+        display: flex;
+        margin: 0 0.5rem;
+    }
+    .system-switcher {
+        display: flex;
+        align-items: center;
+    }
+    .quote-text {
+        max-width: 180px;
+    }
+}
+
+@media (max-width: 576px) {
+    .finance-quotes-mobile {
+        margin: 0 0.375rem;
+    }
+    .quote-container {
+        padding: 0.3rem 0.625rem;
+        gap: 0.375rem;
+    }
+    .quote-text {
+        font-size: 0.675rem;
+        max-width: 160px;
+    }
+    .quote-icon {
+        font-size: 0.8125rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .finance-quotes-mobile {
+        margin: 0 0.25rem;
+    }
+    .quote-text {
+        font-size: 0.65rem;
+        max-width: 140px;
+    }
+    .quote-icon {
+        font-size: 0.75rem;
+    }
+    .quote-container {
+        padding: 0.25rem 0.5rem;
+        gap: 0.25rem;
+        border-radius: 8px;
+    }
+}
+
+@media (max-width: 375px) {
+    .finance-quotes-mobile {
+        margin: 0 0.125rem;
+    }
+    .quote-text {
+        font-size: 0.6rem;
+        max-width: 120px;
+    }
+    .quote-icon {
+        font-size: 0.6875rem;
+    }
+    .quote-container {
+        padding: 0.2rem 0.375rem;
     }
 }

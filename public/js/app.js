@@ -275,20 +275,36 @@ const AnimationManager = {
 // Error Handler
 const ErrorHandler = {
     init() {
+        // Apenas logar erros reais, não eventos que não são erros
         window.addEventListener('error', (event) => {
-            console.error('Erro JavaScript:', event.error);
-            this.reportError(event.error);
+            // Ignorar erros de recursos (imagens, etc) que não são críticos
+            if (event.target && (event.target.tagName === 'IMG' || event.target.tagName === 'LINK')) {
+                // Erro de recurso não crítico, não logar
+                return;
+            }
+            // Logar apenas erros de JavaScript reais
+            if (event.error) {
+                console.error('Erro JavaScript:', event.error);
+                this.reportError(event.error);
+            }
         });
         
         window.addEventListener('unhandledrejection', (event) => {
+            // Ignorar promessas rejeitadas que não são críticas
+            if (event.reason && typeof event.reason === 'string' && event.reason.includes('404')) {
+                return; // Ignorar erros 404 silenciosamente
+            }
             console.error('Promise rejeitada:', event.reason);
             this.reportError(event.reason);
         });
     },
     
     reportError(error) {
-        // Implementar relatório de erros
-        console.log('Erro reportado:', error);
+        // Implementar relatório de erros apenas em produção
+        if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            // Aqui você pode adicionar código para enviar erros para um serviço de monitoramento
+            console.log('Erro reportado:', error);
+        }
     }
 };
 
@@ -305,19 +321,11 @@ const PerformanceOptimizer = {
     },
     
     preloadCriticalResources() {
-        // Preload de recursos críticos
-        const criticalResources = [
-            '/css/app.css',
-            '/js/app.js'
-        ];
-        
-        criticalResources.forEach(resource => {
-            const link = document.createElement('link');
-            link.rel = 'preload';
-            link.href = resource;
-            link.as = resource.endsWith('.css') ? 'style' : 'script';
-            document.head.appendChild(link);
-        });
+        // Preload de recursos críticos - REMOVIDO
+        // Os recursos já são carregados no HTML, então preload dinâmico não é necessário
+        // e causa warnings no console porque não são usados imediatamente
+        // Mantendo função vazia para compatibilidade
+        return;
     },
     
     optimizeImages() {
@@ -325,10 +333,19 @@ const PerformanceOptimizer = {
         if (this.supportsWebP()) {
             const images = document.querySelectorAll('img[src$=".jpg"], img[src$=".png"]');
             images.forEach(img => {
+                // Ignorar placeholder no-image para evitar erro 404
+                if (img.src.includes('no-image')) {
+                    return;
+                }
+                
                 const webpSrc = img.src.replace(/\.(jpg|png)$/, '.webp');
                 const webpImg = new Image();
                 webpImg.onload = () => {
                     img.src = webpSrc;
+                };
+                webpImg.onerror = () => {
+                    // Se WebP não existir, manter imagem original (silenciosamente)
+                    // Não fazer nada, apenas não converter
                 };
                 webpImg.src = webpSrc;
             });
@@ -385,6 +402,14 @@ const PerformanceOptimizer = {
         // Transições suaves entre páginas
         // this.setupPageTransition(); // DESABILITADO - causava problemas
         this.setupLoadingStates();
+    },
+    
+    setupLoadingStates() {
+        // Configurar estados de loading para transições de página
+        // Como a navegação AJAX está desabilitada, esta função apenas garante
+        // que os estados de loading estejam disponíveis se necessário no futuro
+        // Por enquanto, não faz nada já que a navegação é normal do navegador
+        return;
     },
     
     // setupPageTransition() DESABILITADO - navegação AJAX causava problemas
@@ -670,7 +695,8 @@ window.MeusProdutos = {
     HamburgerMenuManager,
     clearAllCachesSimple,
     toggleDevModeSimple,
-    toggleHamburgerMenu
+    toggleHamburgerMenu,
+    FinanceQuotesManager: null // Será definido abaixo
 };
 
 // Inicializar menu hambúrguer
@@ -718,3 +744,116 @@ function ensureHamburgerMenuVisible() {
 
 // Executar verificação após um pequeno delay para garantir que CSS foi carregado
 setTimeout(ensureHamburgerMenuVisible, 100);
+
+// ===================================
+// FRASES DE GESTÃO FINANCEIRA - UNIFICADO
+// ===================================
+const FinanceQuotesManager = {
+    quotes: [
+        'Pague-se primeiro: guarde pelo menos 10% da sua renda',
+        'Não gaste mais do que você ganha',
+        'Planeje cada compra antes de executá-la',
+        'Tenha uma reserva de emergência',
+        'Invista em conhecimento, é o melhor ativo',
+        'Evite dívidas desnecessárias',
+        'Controle seus gastos diariamente',
+        'Estabeleça metas financeiras claras',
+        'Compare preços antes de comprar',
+        'Priorize necessidades sobre desejos',
+        'Registre todas as suas transações',
+        'Revise seus gastos mensalmente',
+        'Aprenda a dizer não a compras impulsivas',
+        'Construa múltiplas fontes de renda',
+        'Pense a longo prazo, mas comece pequeno'
+    ],
+    currentIndex: 0,
+    interval: null,
+    
+    init() {
+        const quoteText = document.getElementById('financeQuoteText');
+        const quoteContainer = document.getElementById('financeQuoteContainer');
+        
+        if (quoteText && quoteContainer) {
+            this.currentIndex = Math.floor(Math.random() * this.quotes.length);
+            this.updateQuoteText();
+            
+            // Trocar frase a cada 8 segundos
+            this.interval = setInterval(() => this.rotateQuote(), 8000);
+        }
+    },
+    
+    updateQuoteText() {
+        const quoteText = document.getElementById('financeQuoteText');
+        const quoteContainer = document.getElementById('financeQuoteContainer');
+        
+        if (!quoteText || !quoteContainer) return;
+        
+        quoteText.textContent = this.quotes[this.currentIndex];
+        
+        setTimeout(() => {
+            const wrapper = quoteText.parentElement;
+            const containerWidth = wrapper.offsetWidth;
+            
+            quoteText.style.display = '-webkit-box';
+            const textHeight = quoteText.scrollHeight;
+            const containerHeight = wrapper.offsetHeight;
+            
+            if (textHeight > containerHeight * 2.5) {
+                quoteText.style.display = 'inline-block';
+                const textWidth = quoteText.scrollWidth;
+                
+                if (textWidth > containerWidth) {
+                    wrapper.classList.add('scroll-mode');
+                    const scrollAmount = textWidth - containerWidth + 20;
+                    quoteText.style.setProperty('--scroll-amount', `-${scrollAmount}px`);
+                } else {
+                    wrapper.classList.remove('scroll-mode');
+                }
+            } else {
+                quoteText.style.display = '-webkit-box';
+                wrapper.classList.remove('scroll-mode');
+            }
+        }, 200);
+    },
+    
+    rotateQuote() {
+        const quoteText = document.getElementById('financeQuoteText');
+        const quoteContainer = document.getElementById('financeQuoteContainer');
+        
+        if (!quoteText || !quoteContainer) return;
+        
+        const wrapper = quoteText.parentElement;
+        wrapper.classList.remove('scroll-mode');
+        quoteContainer.style.opacity = '0';
+        quoteContainer.style.transform = 'translateX(-10px)';
+        
+        setTimeout(() => {
+            this.currentIndex = (this.currentIndex + 1) % this.quotes.length;
+            this.updateQuoteText();
+            
+            quoteContainer.style.opacity = '1';
+            quoteContainer.style.transform = 'translateX(0)';
+        }, 300);
+    },
+    
+    destroy() {
+        if (this.interval) {
+            clearInterval(this.interval);
+            this.interval = null;
+        }
+    }
+};
+
+// Exportar para uso global (atualizar objeto existente)
+if (window.MeusProdutos) {
+    window.MeusProdutos.FinanceQuotesManager = FinanceQuotesManager;
+}
+
+// Inicializar frases financeiras
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        FinanceQuotesManager.init();
+    });
+} else {
+    FinanceQuotesManager.init();
+}

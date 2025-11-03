@@ -19,8 +19,17 @@ class FinancialScheduleController extends Controller
         $month = $request->input('month', now()->month);
         $year = $request->input('year', now()->year);
         
-        // Buscar itens do mês, ordenados por valor (maior primeiro)
-        $schedules = FinancialSchedule::where('user_id', $user->id)
+        // Buscar itens do mês separados por tipo, ordenados por valor (maior primeiro)
+        $incomes = FinancialSchedule::where('user_id', $user->id)
+            ->where('type', 'income')
+            ->byMonth($month, $year)
+            ->active() // Apenas não cancelados
+            ->with('category')
+            ->orderBy('amount', 'desc')
+            ->get();
+        
+        $expenses = FinancialSchedule::where('user_id', $user->id)
+            ->where('type', 'expense')
             ->byMonth($month, $year)
             ->active() // Apenas não cancelados
             ->with('category')
@@ -30,7 +39,7 @@ class FinancialScheduleController extends Controller
         // Contar notificações (vencimentos próximos)
         $notificationCount = $this->getNotificationCount($user->id);
         
-        return view('financial-schedule.index', compact('schedules', 'month', 'year', 'notificationCount'));
+        return view('financial-schedule.index', compact('incomes', 'expenses', 'month', 'year', 'notificationCount'));
     }
     
     public function create()
@@ -42,6 +51,90 @@ class FinancialScheduleController extends Controller
             ->get();
         
         return view('financial-schedule.create', compact('categories'));
+    }
+    
+    public function edit($id)
+    {
+        $user = Auth::user();
+        $schedule = FinancialSchedule::where('user_id', $user->id)
+            ->findOrFail($id);
+        
+        $categories = Category::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        
+        return view('financial-schedule.edit', compact('schedule', 'categories'));
+    }
+    
+    public function update(Request $request, $id)
+    {
+        $schedule = FinancialSchedule::where('user_id', Auth::id())
+            ->findOrFail($id);
+        
+        $request->validate([
+            'type' => 'required|in:income,expense',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'amount' => 'required|numeric|min:0.01',
+            'category_id' => 'nullable|exists:categories,id',
+            'goal_category' => 'nullable|in:fixed_expenses,professional_resources,emergency_reserves,leisure,debt_installments',
+            'scheduled_date' => 'nullable|date',
+            'scheduled_day' => 'nullable|integer|min:1|max:31',
+            'image' => 'nullable|image|max:2048',
+            'recurring_frequency' => 'nullable|in:daily,weekly,biweekly,monthly,quarterly,semiannual,yearly'
+        ]);
+        
+        // Validar que pelo menos uma das datas foi preenchida
+        if (!$request->filled('scheduled_date') && !$request->filled('scheduled_day')) {
+            return back()->withErrors(['scheduled_date' => 'Você deve preencher uma das datas.'])->withInput();
+        }
+        
+        $data = $request->all();
+        
+        // Determinar se é recorrente baseado no campo preenchido
+        $isRecurring = $request->has('scheduled_day') && $request->filled('scheduled_day');
+        
+        if ($isRecurring) {
+            $data['is_recurring'] = true;
+            $data['recurring_config'] = [
+                'frequency' => $request->input('recurring_frequency', 'monthly')
+            ];
+            
+            // Se for recorrente e veio scheduled_day, converter para data completa
+            $day = (int) $request->input('scheduled_day');
+            $now = now();
+            if ($now->day > $day) {
+                $scheduledDate = $now->copy()->addMonth()->day($day);
+            } else {
+                $scheduledDate = $now->copy()->day($day);
+            }
+            $data['scheduled_date'] = $scheduledDate->format('Y-m-d');
+        } else {
+            $data['is_recurring'] = false;
+            $data['recurring_config'] = null;
+        }
+        
+        // Remover scheduled_day se existir
+        unset($data['scheduled_day']);
+        
+        // Upload de nova imagem se houver
+        if ($request->hasFile('image')) {
+            // Deletar imagem antiga se existir
+            if ($schedule->image_path && file_exists(storage_path('app/public/' . $schedule->image_path))) {
+                unlink(storage_path('app/public/' . $schedule->image_path));
+            }
+            $imagePath = $request->file('image')->store('financial-schedules', 'public');
+            $data['image_path'] = $imagePath;
+        } else {
+            // Manter a imagem atual se não houver nova
+            unset($data['image']);
+        }
+        
+        $schedule->update($data);
+        
+        return redirect()->route('financial-schedule.index')
+            ->with('success', 'Item agendado atualizado com sucesso!');
     }
     
     public function store(Request $request)

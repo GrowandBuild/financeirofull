@@ -88,36 +88,7 @@
     font-weight: 500;
 }
 
-/* Paginação estilizada */
-.pagination {
-    margin-bottom: 0;
-    justify-content: center;
-}
-
-.pagination .page-link {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 0.5rem 0.75rem;
-}
-
-.pagination .page-link:hover {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border-color: rgba(255, 255, 255, 0.3);
-}
-
-.pagination .page-item.active .page-link {
-    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-    border-color: #3b82f6;
-    color: white;
-}
-
-.pagination .page-item.disabled .page-link {
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(255, 255, 255, 0.1);
-    color: rgba(255, 255, 255, 0.3);
-}
+/* Paginação estilizada - Removido - agora usa app.css otimizado */
 
 /* Customização de inputs */
 .form-control, .form-select {
@@ -174,13 +145,7 @@
         margin-bottom: 0.75rem !important;
     }
     
-    .pagination {
-        font-size: 0.875rem;
-    }
-    
-    .pagination .page-link {
-        padding: 0.375rem 0.5rem;
-    }
+    /* Paginação mobile agora usa app.css otimizado */
     
     .row {
         margin-bottom: 0 !important;

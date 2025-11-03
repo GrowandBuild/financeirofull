@@ -30,6 +30,8 @@ Route::prefix('financial-schedule')->name('financial-schedule.')->middleware('au
     Route::get('/', [\App\Http\Controllers\FinancialScheduleController::class, 'index'])->name('index');
     Route::get('/create', [\App\Http\Controllers\FinancialScheduleController::class, 'create'])->name('create');
     Route::post('/', [\App\Http\Controllers\FinancialScheduleController::class, 'store'])->name('store');
+    Route::get('/{id}/edit', [\App\Http\Controllers\FinancialScheduleController::class, 'edit'])->name('edit');
+    Route::put('/{id}', [\App\Http\Controllers\FinancialScheduleController::class, 'update'])->name('update');
     Route::post('/{id}/confirm', [\App\Http\Controllers\FinancialScheduleController::class, 'confirm'])->name('confirm');
     Route::post('/{id}/unconfirm', [\App\Http\Controllers\FinancialScheduleController::class, 'unconfirm'])->name('unconfirm');
     Route::post('/{id}/cancel', [\App\Http\Controllers\FinancialScheduleController::class, 'cancel'])->name('cancel');
