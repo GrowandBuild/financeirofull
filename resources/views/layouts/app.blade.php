@@ -59,29 +59,42 @@
         <!-- Offline Storage -->
         <script src="{{ asset('js/offline-storage.js') }}?v={{ filemtime(public_path('js/offline-storage.js')) }}"></script>
         
-        <!-- Mobile Fixes (deve vir após offline-storage) -->
-        <script src="{{ asset('js/mobile-offline-fix.js') }}?v={{ filemtime(public_path('js/mobile-offline-fix.js')) }}"></script>
-        
         <!-- Offline Forms Interceptor -->
         <script src="{{ asset('js/offline-forms.js') }}?v={{ filemtime(public_path('js/offline-forms.js')) }}"></script>
+        
+        <!-- Offline Sync (sincronização automática) -->
+        <script src="{{ asset('js/offline-sync.js') }}?v={{ filemtime(public_path('js/offline-sync.js')) }}"></script>
         
         <!-- Custom JavaScript -->
         <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
         
-        <!-- Verificar inicialização do OfflineStorage -->
+        <!-- Registrar Service Worker -->
         <script>
-            // Aguardar inicialização do OfflineStorage
-            document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(() => {
-                    if (window.offlineStorage) {
-                        console.log('✅ OfflineStorage inicializado:', window.offlineStorage);
-                        console.log('📡 Status:', window.offlineStorage.isOnlineStatus() ? 'Online' : 'Offline');
-                    } else {
-                        console.error('❌ OfflineStorage não está disponível!');
-                        console.log('Verifique se o arquivo public/js/offline-storage.js existe e está sendo carregado.');
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', async () => {
+                    try {
+                        const registration = await navigator.serviceWorker.register('/sw.js', {
+                            scope: '/'
+                        });
+                        console.log('✅ Service Worker registrado:', registration.scope);
+                        
+                        // Escutar atualizações
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    if (confirm('Nova versão disponível! Deseja atualizar?')) {
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                    } catch (error) {
+                        console.error('❌ Erro ao registrar Service Worker:', error);
                     }
-                }, 1000);
-            });
+                });
+            }
         </script>
     </head>
 <body>

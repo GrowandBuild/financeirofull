@@ -32,11 +32,19 @@
         Header set X-Content-Type-Options "nosniff"
     </FilesMatch>
     
-    # Manifest e SW - não cachear
-    <FilesMatch "(manifest\.json|sw\.js)$">
+    # Manifest e SW - não cachear e MIME type correto
+    <FilesMatch "sw\.js$">
         Header set Cache-Control "no-cache, no-store, must-revalidate"
         Header set Pragma "no-cache"
         Header set Expires "0"
+        Header set Content-Type "application/javascript"
+    </FilesMatch>
+    
+    <FilesMatch "manifest\.json$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+        Header set Pragma "no-cache"
+        Header set Expires "0"
+        Header set Content-Type "application/manifest+json"
     </FilesMatch>
 </IfModule>
 

@@ -5,11 +5,9 @@
 
 // Cache de elementos DOM
 const DOMCache = {
-    onlineStatus: null,
     searchInput: null,
     productGrid: null,
     init() {
-        this.onlineStatus = document.getElementById('online-status');
         this.searchInput = document.querySelector('.premium-search-input');
         this.productGrid = document.querySelector('.premium-product-grid');
     }
@@ -119,26 +117,6 @@ const ServiceWorkerManager = {
     }
 };
 
-// Online/Offline Status Manager
-const OnlineStatusManager = {
-    init() {
-        this.updateStatus();
-        window.addEventListener('online', () => this.updateStatus());
-        window.addEventListener('offline', () => this.updateStatus());
-    },
-    
-    updateStatus() {
-        if (DOMCache.onlineStatus) {
-            if (navigator.onLine) {
-                DOMCache.onlineStatus.innerHTML = '<i class="bi bi-wifi"></i> Online';
-                DOMCache.onlineStatus.className = 'online-indicator online';
-            } else {
-                DOMCache.onlineStatus.innerHTML = '<i class="bi bi-wifi-off"></i> Offline';
-                DOMCache.onlineStatus.className = 'online-indicator offline';
-            }
-        }
-    }
-};
 
 // Search Manager
 const SearchManager = {
@@ -560,7 +538,6 @@ const App = {
         
         // Inicializar componentes
         DOMCache.init();
-        OnlineStatusManager.init();
         SearchManager.init();
         LazyImageLoader.init();
         ErrorHandler.init();

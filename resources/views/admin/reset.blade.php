@@ -531,21 +531,7 @@ function clearAllCaches() {
         console.warn('⚠️ Erro ao limpar sessionStorage:', e);
     }
     
-    // 3. Limpar IndexedDB
-    if ('indexedDB' in window) {
-        try {
-            indexedDB.databases().then(databases => {
-                databases.forEach(db => {
-                    indexedDB.deleteDatabase(db.name);
-                });
-                console.log('✅ IndexedDB limpo');
-            });
-        } catch (e) {
-            console.warn('⚠️ Erro ao limpar IndexedDB:', e);
-        }
-    }
-    
-    // 4. Limpar Service Worker cache
+    // 3. Limpar Service Worker cache
     if ('caches' in window) {
         caches.keys().then(cacheNames => {
             return Promise.all(
