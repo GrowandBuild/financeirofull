@@ -11,11 +11,8 @@
             <span class="header-subtitle">Adicione produtos ao carrinho</span>
         </div>
         <div class="header-actions">
-            <button class="action-btn" onclick="clearCart()">
+            <button class="action-btn" onclick="clearCart()" title="Limpar carrinho">
                 <i class="bi bi-trash"></i>
-            </button>
-            <button class="action-btn" onclick="savePurchase()">
-                <i class="bi bi-check-circle"></i>
             </button>
         </div>
     </div>
@@ -54,7 +51,7 @@
 
     <!-- Store Information -->
     <div class="store-info-section">
-        <div class="search-form-container">
+        <div class="store-info-card">
             <div class="filter-header">
                 <i class="bi bi-shop"></i>
                 <span>Informações da Loja</span>
@@ -99,16 +96,17 @@
         <div class="premium-product-grid" id="productGrid">
             @if($products && $products->count() > 0)
                 @foreach($products as $product)
-                    <div class="premium-product-card cart-product-card" 
+                    <div class="premium-product-card cart-product-card product-clickable" 
                          data-product-id="{{ $product->id }}"
-                         data-product-name="{{ $product->name }}"
-                         data-product-category="{{ $product->category }}"
-                         data-product-image="{{ $product->image_url }}"
-                         onclick="openProductModal({{ $product->id }}, '{{ $product->name }}', '{{ $product->category }}', '{{ $product->image_url }}')">
+                         data-product-name="{{ htmlspecialchars($product->name, ENT_QUOTES, 'UTF-8') }}"
+                         data-product-category="{{ htmlspecialchars($product->category ?? '', ENT_QUOTES, 'UTF-8') }}"
+                         data-product-image="{{ htmlspecialchars($product->image_url ?? '', ENT_QUOTES, 'UTF-8') }}"
+                         style="cursor: pointer;">
                         <div class="premium-product-image">
-                            <img src="{{ $product->image_url }}" 
+                            <img src="{{ $product->image_url ?? asset('images/no-image.png') }}" 
                                  alt="{{ $product->name }}" 
-                                 class="img-fluid">
+                                 class="img-fluid"
+                                 onerror="this.onerror=null; this.src='{{ asset('images/no-image.png') }}';">
                             <div class="product-overlay">
                                 <i class="bi bi-plus-circle"></i>
                             </div>
@@ -116,14 +114,6 @@
                         <div class="premium-product-info">
                             <h5 class="premium-product-name">{{ $product->name }}</h5>
                             <div class="premium-product-category">{{ $product->category ?? 'Sem categoria' }}</div>
-                            <div class="premium-product-price">
-                                @if($product->monthly_spend > 0)
-                                    R$ {{ number_format($product->monthly_spend, 2, ',', '.') }}
-                                    <small class="text-white/60 text-xs block">Total do mês</small>
-                                @else
-                                    Sem gastos
-                                @endif
-                            </div>
                         </div>
                     </div>
                 @endforeach
@@ -146,77 +136,7 @@
     </div>
 </div>
 
-<!-- Product Selection Modal -->
-<div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content premium-modal">
-            <div class="modal-header">
-                <h5 class="modal-title" id="productModalLabel">Selecionar Produto</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-            </div>
-            <div class="modal-body">
-                <div class="product-modal-info">
-                    <div class="product-modal-image">
-                        <img id="modalProductImage" src="" alt="" class="img-fluid">
-                    </div>
-                    <div class="product-modal-details">
-                        <h6 id="modalProductName"></h6>
-                        <span id="modalProductCategory" class="text-muted"></span>
-                    </div>
-                </div>
-                
-                <!-- Variant Selection -->
-                <div class="variant-section">
-                    <label class="form-label">Tipo/Variante:</label>
-                    <select class="form-select" id="variantSelect">
-                        <option value="">Selecione o tipo...</option>
-                    </select>
-                </div>
-                
-                <!-- Unit Selection -->
-                <div class="unit-section">
-                    <label class="form-label">Unidade de Medida:</label>
-                    <select class="form-select" id="unitSelect">
-                        <option value="">Selecione a unidade...</option>
-                    </select>
-                </div>
-                
-                <!-- Quantity and Price -->
-                <div class="row">
-                    <div class="col-6">
-                        <label class="form-label">Quantidade:</label>
-                        <div class="input-group">
-                            <button class="btn btn-outline-secondary" type="button" onclick="decreaseModalQuantity()">
-                                <i class="bi bi-dash"></i>
-                            </button>
-                            <input type="number" class="form-control text-center" id="modalQuantity" value="1" min="1">
-                            <button class="btn btn-outline-secondary" type="button" onclick="increaseModalQuantity()">
-                                <i class="bi bi-plus"></i>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <label class="form-label">Preço Unitário:</label>
-                        <div class="input-group">
-                            <span class="input-group-text">R$</span>
-                            <input type="number" class="form-control" id="modalPrice" placeholder="0,00" step="0.01" min="0">
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Total Preview -->
-                <div class="total-preview">
-                    <div class="total-label">Total:</div>
-                    <div class="total-value" id="modalTotal">R$ 0,00</div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="addToCartFromModal()">Adicionar ao Carrinho</button>
-            </div>
-        </div>
-    </div>
-</div>
+{{-- Modal agora renderizado no layout principal (app.blade.php), FORA do mobile-container --}}
 @endsection
 
 @section('scripts')
@@ -225,6 +145,9 @@ let cart = {};
 let cartTotal = 0;
 let cartItemsCount = 0;
 let currentProduct = null;
+
+// Caminho da imagem padrão para fallback
+const DEFAULT_IMAGE = '{{ asset('images/no-image.png') }}';
 
 // Product variants and units database - será carregado dinamicamente
 let productVariants = {};
@@ -236,29 +159,176 @@ async function loadProductsWithVariants() {
         const products = await response.json();
         
         // Converter para o formato esperado pelo JavaScript
+        // IMPORTANTE: Incluir TODOS os produtos, não apenas os com variantes
         productVariants = {};
         products.forEach(product => {
-            if (product.variants && product.variants.length > 0) {
-                productVariants[product.name] = {
-                    id: product.id,
-                    category: product.category,
-                    variants: product.variants.map(variant => variant.name),
-                    units: [product.unit],
-                    image_url: product.image_url
-                };
+            // Processar variantes: podem ser objetos com 'name' ou strings simples
+            let processedVariants = [];
+            if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
+                processedVariants = product.variants.map(variant => {
+                    // Se for objeto, pegar o 'name'; se for string, usar diretamente
+                    if (typeof variant === 'object' && variant !== null) {
+                        return variant.name || variant.unit || JSON.stringify(variant);
+                    }
+                    return variant;
+                }).filter(v => v); // Remover valores vazios/null
             }
+            
+            // Sempre adicionar o produto, mesmo se não tiver variantes
+            productVariants[product.name] = {
+                id: product.id,
+                category: product.category,
+                variants: processedVariants,
+                // Sempre incluir a unidade do produto
+                units: product.unit ? [product.unit] : ['unidade'],
+                image_url: product.image_url
+            };
         });
         
-        console.log('Produtos com variantes carregados:', productVariants);
+        console.log('Produtos carregados:', productVariants);
     } catch (error) {
         console.error('Erro ao carregar produtos:', error);
     }
 }
 
+// Função para aguardar Bootstrap estar pronto
+function waitForBootstrap(callback, maxAttempts = 10, attempt = 0) {
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        callback();
+    } else if (attempt < maxAttempts) {
+        setTimeout(() => {
+            waitForBootstrap(callback, maxAttempts, attempt + 1);
+        }, 100);
+    } else {
+        console.error('Bootstrap não foi carregado após', maxAttempts * 100, 'ms');
+        alert('Erro: Bootstrap não foi carregado. Recarregue a página.');
+    }
+}
+
 // Carregar produtos quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
-    loadProductsWithVariants();
+    console.log('=== DOMContentLoaded ===');
+    
+    // Aguardar Bootstrap estar pronto
+    waitForBootstrap(function() {
+        console.log('Bootstrap disponível, inicializando página...');
+        initializePage();
+    });
+    
+    function initializePage() {
+        console.log('Bootstrap disponível:', typeof bootstrap !== 'undefined');
+        loadProductsWithVariants();
+        
+        // Adicionar event listeners para os cards de produtos
+        setupProductCardListeners();
+    }
 });
+
+// Variável para armazenar a referência do listener e evitar duplicação
+let productCardClickListener = null;
+
+// Configurar event listeners para os cards de produtos
+function setupProductCardListeners() {
+    console.log('=== CONFIGURANDO EVENT LISTENERS ===');
+    
+    // Usar event delegation no container para melhor performance
+    const productGrid = document.getElementById('productGrid');
+    
+    if (!productGrid) {
+        console.error('Grid de produtos não encontrado! #productGrid não existe no DOM.');
+        return;
+    }
+    
+    console.log('Grid de produtos encontrado:', productGrid);
+    console.log('Número de cards clicáveis:', productGrid.querySelectorAll('.product-clickable').length);
+    
+    // Remover listener anterior se existir
+    if (productCardClickListener) {
+        productGrid.removeEventListener('click', productCardClickListener);
+        productCardClickListener = null;
+    }
+    
+    // Criar nova referência do listener
+    productCardClickListener = handleProductCardClick;
+    
+    // Garantir que o container possa receber eventos
+    productGrid.style.pointerEvents = 'auto';
+    
+    // Adicionar listener único usando delegation na fase de bubbling
+    productGrid.addEventListener('click', productCardClickListener, false);
+    
+    console.log('Event listeners configurados para cards de produtos');
+}
+
+// Handler para clique nos cards de produtos
+function handleProductCardClick(e) {
+    console.log('=== CLIQUE DETECTADO ===');
+    console.log('Event:', e);
+    console.log('Target clicado:', e.target);
+    console.log('CurrentTarget:', e.currentTarget);
+    console.log('Target classes:', e.target.className);
+    console.log('Target tagName:', e.target.tagName);
+    console.log('Target ID:', e.target.id);
+    
+    // Encontrar o card clicado (pode ser o card ou um elemento filho)
+    let card = e.target.closest('.product-clickable');
+    
+    // Se não encontrou, tentar procurar pelo currentTarget
+    if (!card && e.currentTarget && e.currentTarget.classList.contains('product-clickable')) {
+        card = e.currentTarget;
+        console.log('Card encontrado via currentTarget:', card);
+    }
+    
+    // Se ainda não encontrou, procurar no path do evento
+    if (!card && e.composedPath) {
+        const path = e.composedPath();
+        card = path.find(el => el && el.classList && el.classList.contains('product-clickable'));
+        if (card) {
+            console.log('Card encontrado via composedPath:', card);
+        }
+    }
+    
+    if (!card) {
+        console.log('Não é um card de produto clicável');
+        console.log('Path do evento:', e.composedPath ? e.composedPath() : 'N/A');
+        return; // Não é um card de produto
+    }
+    
+    console.log('Card encontrado:', card);
+    
+    e.preventDefault();
+    e.stopPropagation();
+    
+    const productId = card.getAttribute('data-product-id');
+    const productName = card.getAttribute('data-product-name');
+    const productCategory = card.getAttribute('data-product-category');
+    const productImage = card.getAttribute('data-product-image');
+    
+    console.log('Dados extraídos do card:', {
+        productId: productId,
+        productName: productName,
+        productCategory: productCategory,
+        productImage: productImage,
+        target: e.target,
+        card: card
+    });
+    
+    if (productId && productName) {
+        console.log('Chamando openProductModal...');
+        openProductModal(
+            parseInt(productId),
+            productName,
+            productCategory || '',
+            productImage || ''
+        );
+    } else {
+        console.error('Dados do produto incompletos:', {
+            productId: productId,
+            productName: productName
+        });
+        alert('Erro: Dados do produto incompletos. Recarregue a página.');
+    }
+}
 
 // Dados hardcoded removidos - usando apenas API do banco de dados
 
@@ -298,147 +368,216 @@ function initializeCart() {
     updateCartDisplay();
 }
 
-// Open product selection modal
-function openProductModal(productId, productName, productCategory, productImage) {
-    console.log('Abrindo modal para produto:', {
-        productId: productId,
-        productIdType: typeof productId,
-        productName: productName,
-        productCategory: productCategory,
-        productImage: productImage
-    });
+// Variável global para instância do modal
+let modalInstance = null;
+let modalEventListeners = {
+    shown: null,
+    hidden: null,
+    focusin: null
+};
+
+// Função para limpar e resetar o modal
+function resetModal() {
+    const modalElement = document.getElementById('productModal');
+    if (!modalElement) return;
     
-    currentProduct = {
-        id: parseInt(productId), // Garantir que seja um número
-        name: productName,
-        category: productCategory,
-        image: productImage
-    };
-    
-    console.log('currentProduct definido:', currentProduct);
-    
-    // Set modal content
-    document.getElementById('modalProductImage').src = productImage;
-    document.getElementById('modalProductName').textContent = productName;
-    document.getElementById('modalProductCategory').textContent = productCategory;
-    
-    // Populate variants
-    const variantSelect = document.getElementById('variantSelect');
-    variantSelect.innerHTML = '<option value="">Selecione o tipo...</option>';
-    
-    if (productVariants[productName]) {
-        productVariants[productName].variants.forEach(variant => {
-            const option = document.createElement('option');
-            option.value = variant;
-            option.textContent = variant;
-            variantSelect.appendChild(option);
-        });
-    } else {
-        // Try to match by category for better variants
-        const categoryVariants = getVariantsByCategory(productCategory);
-        categoryVariants.forEach(variant => {
-            const option = document.createElement('option');
-            option.value = variant;
-            option.textContent = variant;
-            variantSelect.appendChild(option);
-        });
-    }
-    
-    // Populate units
+    // Fechar todos os selects abertos - CRÍTICO para evitar select pendurado
     const unitSelect = document.getElementById('unitSelect');
-    unitSelect.innerHTML = '<option value="">Selecione a unidade...</option>';
+    const variantSelect = document.getElementById('variantSelect');
     
-    if (productVariants[productName]) {
-        productVariants[productName].units.forEach(unit => {
-            const option = document.createElement('option');
-            option.value = unit;
-            option.textContent = unit;
-            unitSelect.appendChild(option);
-        });
-    } else {
-        // Try to match by category for better units
-        const categoryUnits = getUnitsByCategory(productCategory);
-        categoryUnits.forEach(unit => {
-            const option = document.createElement('option');
-            option.value = unit;
-            option.textContent = unit;
-            unitSelect.appendChild(option);
-        });
+    if (unitSelect) {
+        unitSelect.blur(); // Remover foco
+        unitSelect.size = 1; // Garantir que não está aberto como lista
+        // Resetar estilos que podem estar causando o select a ficar pendurado
+        if (unitSelect.style) {
+            unitSelect.style.height = '';
+            unitSelect.style.position = '';
+            unitSelect.style.zIndex = '';
+        }
+        // Remover foco forçadamente se ainda estiver ativo
+        if (document.activeElement === unitSelect) {
+            document.activeElement.blur();
+            document.body.focus();
+        }
     }
     
-    // Reset modal values
-    document.getElementById('modalQuantity').value = 1;
-    document.getElementById('modalPrice').value = '';
-    updateModalTotal();
+    if (variantSelect) {
+        variantSelect.blur(); // Remover foco
+        variantSelect.size = 1; // Garantir que não está aberto como lista
+        // Resetar estilos que podem estar causando o select a ficar pendurado
+        if (variantSelect.style) {
+            variantSelect.style.height = '';
+            variantSelect.style.position = '';
+            variantSelect.style.zIndex = '';
+        }
+        // Remover foco forçadamente se ainda estiver ativo
+        if (document.activeElement === variantSelect) {
+            document.activeElement.blur();
+            document.body.focus();
+        }
+    }
     
-    // Show modal
-    const modal = new bootstrap.Modal(document.getElementById('productModal'));
-    modal.show();
+    // Garantir que rolagem seja restaurada se ainda estiver bloqueada
+    const body = document.body;
+    const html = document.documentElement;
+    const scrollY = modalElement.dataset.scrollY || 0;
+    
+    // Restaurar rolagem se ainda estiver bloqueada
+    if (body.style.position === 'fixed') {
+        body.style.position = '';
+        body.style.top = '';
+        body.style.width = '';
+        body.style.overflow = '';
+        body.style.paddingRight = '';
+        html.style.overflow = '';
+        
+        if (scrollY) {
+            window.scrollTo(0, parseInt(scrollY));
+        }
+        
+        delete modalElement.dataset.scrollY;
+    }
+    
+    // Remover event listeners antigos apenas se existirem
+    if (modalEventListeners.shown && modalElement) {
+        modalElement.removeEventListener('shown.bs.modal', modalEventListeners.shown);
+    }
+    if (modalEventListeners.hidden && modalElement) {
+        modalElement.removeEventListener('hidden.bs.modal', modalEventListeners.hidden);
+    }
+    if (modalEventListeners.focusin && modalElement) {
+        modalElement.removeEventListener('focusin', modalEventListeners.focusin);
+    }
+}
+
+// Open product selection modal
+// Usa o novo ProductModalManager
+function openProductModal(productId, productName, productCategory, productImage) {
+    // Validar parâmetros
+    if (!productId || !productName) {
+        console.error('Parâmetros inválidos para openProductModal:', {
+            productId: productId,
+            productName: productName
+        });
+        alert('Erro: Dados do produto inválidos. Recarregue a página e tente novamente.');
+        return;
+    }
+    
+    // Verificar se ProductModalManager está disponível
+    if (typeof window.openProductModal === 'function' && window.ProductModalManager) {
+        // Usar o ProductModalManager global (definido no product-modal.js)
+        // A função openProductModal já está sobrescrita no product-modal.js
+        // Mas vamos garantir que está usando o manager
+        if (window.productModalManager) {
+            window.productModalManager.open(productId, productName, productCategory, productImage);
+        } else if (window.ProductModalManager) {
+            // Se ainda não foi inicializado, inicializar agora
+            window.productModalManager = new window.ProductModalManager();
+            window.productModalManager.open(productId, productName, productCategory, productImage);
+        } else {
+            console.error('ProductModalManager não encontrado');
+            alert('Erro: Modal não inicializado. Recarregue a página.');
+        }
+        return;
+    }
+    
+    // Fallback: tentar usar função global
+    if (typeof window.openProductModal === 'function') {
+        window.openProductModal(productId, productName, productCategory, productImage);
+        return;
+    }
+    
+    console.error('Nenhum sistema de modal disponível');
+    alert('Erro: Sistema de modal não disponível. Recarregue a página.');
 }
 
 // Add product to cart from modal
-function addToCartFromModal() {
-    console.log('addToCartFromModal chamada, currentProduct:', currentProduct);
+// Aceita objeto com dados ou pega do DOM
+function addToCartFromModal(data = null) {
+    let variant, unit, quantity, price, productId, productName, productCategory;
     
-    const variant = document.getElementById('variantSelect').value;
-    const unit = document.getElementById('unitSelect').value;
-    const quantity = parseInt(document.getElementById('modalQuantity').value);
-    const price = parseFloat(document.getElementById('modalPrice').value);
+    // Se dados foram passados como objeto (novo modal)
+    if (data && typeof data === 'object') {
+        productId = data.productId;
+        productName = data.productName;
+        productCategory = data.category || '';
+        variant = data.variant || 'Padrão';
+        unit = data.unit;
+        quantity = data.quantity || 1;
+        price = data.price;
+    } else {
+        // Pegar do DOM (compatibilidade com código antigo)
+        variant = document.getElementById('variantSelect')?.value || 'Padrão';
+        unit = document.getElementById('unitSelect')?.value;
+        quantity = parseInt(document.getElementById('modalQuantity')?.value) || 1;
+        price = parseFloat(document.getElementById('modalPrice')?.value?.replace(',', '.')) || 0;
+        
+        if (!currentProduct || !currentProduct.id) {
+            alert('Erro: Produto não selecionado corretamente. Tente novamente.');
+            return;
+        }
+        
+        productId = currentProduct.id;
+        productName = currentProduct.name;
+        productCategory = currentProduct.category || '';
+    }
     
-    console.log('Dados do modal:', { variant, unit, quantity, price });
-    
-    if (!variant || !unit || !price) {
-        alert('Preencha todos os campos obrigatórios!');
+    // Validação
+    if (!unit || !unit.trim()) {
+        alert('Por favor, selecione uma unidade de medida!');
         return;
     }
     
-    if (!currentProduct || !currentProduct.id) {
-        console.error('currentProduct não está definido ou não tem id:', currentProduct);
-        alert('Erro: Produto não selecionado corretamente. Tente novamente.');
+    if (!price || price <= 0) {
+        alert('Por favor, informe um preço unitário válido!');
         return;
     }
     
-    const cartKey = `${currentProduct.id}_${variant}_${unit}`;
-    const displayName = `${currentProduct.name} - ${variant}`;
+    if (quantity <= 0) {
+        alert('A quantidade deve ser maior que zero!');
+        return;
+    }
     
-    console.log('cartKey gerado:', cartKey);
+    // Criar chave única para o carrinho
+    const variantForKey = variant || 'Padrão';
+    const cartKey = `${productId}_${variantForKey}_${unit}`;
+    const displayName = variant && variant !== 'Padrão' && variant !== ''
+        ? `${productName} - ${variant}` 
+        : productName;
     
     if (!cart[cartKey]) {
-        console.log('Criando novo item no carrinho:', {
-            cartKey: cartKey,
-            currentProduct: currentProduct,
-            productId: currentProduct.id,
-            productIdType: typeof currentProduct.id
-        });
-        
         cart[cartKey] = {
-            id: currentProduct.id,
-            name: currentProduct.name,
+            id: productId,
+            name: productName,
             variant: variant,
             unit: unit,
             displayName: displayName,
-            category: currentProduct.category,
-            image: currentProduct.image,
+            category: productCategory,
+            image: currentProduct?.image || '',
             quantity: 0,
             price: 0,
             total: 0
         };
-        
-        console.log('Item criado no carrinho:', cart[cartKey]);
     }
     
     cart[cartKey].quantity += quantity;
     cart[cartKey].price = price;
     cart[cartKey].total = cart[cartKey].quantity * cart[cartKey].price;
     
-    console.log('Carrinho após adicionar item:', cart);
-    console.log('Item específico no carrinho:', cart[cartKey]);
-    
     updateCartDisplay();
     
+    // Fechar selects antes de fechar o modal
+    const unitSelect = document.getElementById('unitSelect');
+    const variantSelect = document.getElementById('variantSelect');
+    unitSelect.blur();
+    variantSelect.blur();
+    unitSelect.size = 1;
+    variantSelect.size = 1;
+    
     // Close modal
-    const modal = bootstrap.Modal.getInstance(document.getElementById('productModal'));
-    modal.hide();
+    if (modalInstance) {
+        modalInstance.hide();
+    }
 }
 
 // Modal quantity controls
@@ -793,21 +932,149 @@ document.getElementById('categoryFilter').addEventListener('change', function() 
 
 <style>
 .cart-summary {
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
 }
 
 .store-info-section {
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Card de informações da loja */
+.store-info-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem;
+    backdrop-filter: blur(10px);
+}
+
+.store-info-card .filter-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+    color: white;
+    font-weight: 600;
+    font-size: 0.875rem;
+}
+
+.store-info-card .filter-header i {
+    color: #10b981;
+    font-size: 1rem;
+}
+
+.store-info-card .row {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.store-info-card .col-8 {
+    flex: 0 0 66.666667%;
+    max-width: 66.666667%;
+}
+
+.store-info-card .col-4 {
+    flex: 0 0 30%;
+    max-width: 30%;
+}
+
+/* Melhorar contraste e espaçamento dos inputs */
+.store-info-card input[type="text"],
+.store-info-card input[type="date"] {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    font-weight: 500 !important;
+    padding: 0.75rem 1rem !important;
+    border-radius: 12px !important;
+    transition: all 0.3s ease !important;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.store-info-card input[type="text"]:focus,
+.store-info-card input[type="date"]:focus {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+    outline: none !important;
+}
+
+.store-info-card input[type="text"]::placeholder {
+    color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Melhorar contraste do filtro de categoria */
+.premium-select {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    font-weight: 500 !important;
+    padding: 0.75rem 1rem !important;
+    border-radius: 12px !important;
+    transition: all 0.3s ease !important;
+}
+
+.premium-select:focus {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2) !important;
+    outline: none !important;
+}
+
+.premium-select option {
+    background: #1f2937 !important;
+    color: white !important;
+    padding: 0.75rem;
 }
 
 .cart-product-card {
     position: relative;
     transition: all 0.3s ease;
+    cursor: pointer !important;
+    user-select: none;
+    border: 2px solid transparent !important;
+}
+
+.cart-product-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    border-color: rgba(16, 185, 129, 0.3) !important;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%) !important;
+}
+
+/* Garantir que o grid possa receber eventos */
+#productGrid {
+    pointer-events: auto !important;
+}
+
+.product-clickable {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative;
+    z-index: 1;
+}
+
+.product-clickable * {
+    pointer-events: none;
+}
+
+/* Garantir que o overlay não bloqueie cliques */
+.product-clickable .product-overlay {
+    pointer-events: none !important;
+}
+
+/* Garantir que elementos internos não bloqueiem o clique no card */
+.product-clickable img,
+.product-clickable h5,
+.product-clickable div,
+.product-clickable span {
+    pointer-events: none !important;
 }
 
 .cart-product-card.in-cart {
-    border: 2px solid #10b981;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+    border: 2px solid #10b981 !important;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(5, 150, 105, 0.1) 100%) !important;
 }
 
 .cart-controls {
@@ -945,78 +1212,475 @@ document.getElementById('categoryFilter').addEventListener('change', function() 
     font-weight: 700;
 }
 
-/* Modal Styles */
-.premium-modal {
-    background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    color: white;
+/* Modal Styles - Visual Premium e Moderno */
+/* CRÍTICO: Modal renderizado FORA do mobile-container no body, então não é afetado por contain */
+/* O modal é renderizado pelo Bootstrap diretamente no body através do layout */
+#productModal.modal {
+    z-index: 9999 !important; /* z-index muito alto para garantir que fique acima de TUDO */
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    display: none !important; /* Bootstrap controla */
+    align-items: center !important;
+    justify-content: center !important;
+    overflow-y: auto !important;
+    padding: 1rem !important;
+    animation: fadeIn 0.2s ease-out !important;
+    pointer-events: none !important; /* Não bloquear cliques - permitir que passem para dialog/content */
+    contain: none !important; /* CRÍTICO: Não ter contain */
+    isolation: isolate !important; /* Criar novo stacking context isolado */
+}
+
+/* Quando o modal está aberto */
+#productModal.modal.show {
+    display: flex !important;
+    z-index: 9999 !important; /* z-index muito alto */
+    pointer-events: none !important; /* CRÍTICO: Permitir que cliques passem para o conteúdo */
+    contain: none !important; /* CRÍTICO: Não ter contain */
+    isolation: isolate !important; /* Criar novo stacking context isolado */
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+/* Removido - já está acima */
+
+/* Backdrop do Bootstrap - abaixo do modal mas acima de outros elementos */
+.modal-backdrop {
+    z-index: 9998 !important; /* Um nível abaixo do modal (9999) */
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0.85) 100%) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    animation: backdropFadeIn 0.3s ease-out !important;
+    pointer-events: auto !important; /* Permitir cliques para fechar */
+    contain: none !important; /* Não ter contain */
+}
+
+/* CRÍTICO: Garantir que o backdrop não bloqueie o modal quando estiver atrás */
+.modal.show ~ .modal-backdrop,
+.modal.show + .modal-backdrop {
+    pointer-events: auto !important;
+}
+
+@keyframes backdropFadeIn {
+    from {
+        opacity: 0;
+        backdrop-filter: blur(0px);
+    }
+    to {
+        opacity: 1;
+        backdrop-filter: blur(8px);
+    }
+}
+
+.modal-backdrop.show {
+    z-index: 9998 !important; /* Um nível abaixo do modal */
+}
+
+/* Modal dialog - centralizado corretamente com animação */
+/* CRÍTICO: z-index deve ser maior que backdrop (9998) */
+#productModal .modal-dialog {
+    z-index: 10000 !important; /* Acima do modal (9999) e backdrop (9998) */
+    position: relative !important;
+    margin: auto !important;
+    max-width: 90vw !important;
+    width: 100% !important;
+    max-height: 90vh !important;
+    pointer-events: none !important; /* Não bloquear cliques - permitir que passem para o content */
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    /* Garantir centralização vertical e horizontal */
+    flex-shrink: 0 !important;
+    animation: modalSlideIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    contain: none !important; /* Não ter contain */
+    isolation: auto !important; /* Não criar novo stacking context aqui */
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-30px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* Responsividade do modal */
+@media (min-width: 576px) {
+    #productModal .modal-dialog {
+        max-width: 550px !important;
+    }
+    
+    #productModal .modal-content {
+        max-width: 100% !important;
+    }
+}
+
+@media (max-width: 575px) {
+    #productModal .modal-dialog {
+        max-width: 95vw !important;
+        margin: 0.5rem auto !important;
+    }
+    
+    #productModal .modal-content {
+        max-width: 100% !important;
+        margin: 0 !important;
+        border-radius: 20px !important;
+    }
+    
+    #productModal .modal-body {
+        padding: 1rem !important;
+    }
+    
+    .product-modal-info {
+        padding: 1rem !important;
+    }
+    
+    .variant-section,
+    .unit-section {
+        margin-bottom: 1rem !important;
+    }
+    
+    .total-preview {
+        padding: 1rem !important;
+    }
+}
+
+/* Modal content - Visual Premium com Glassmorphism */
+/* CRÍTICO: Este deve ter pointer-events: auto para receber cliques */
+#productModal .modal-content,
+#productModal.premium-modal {
+    background: linear-gradient(135deg, rgba(31, 41, 55, 0.95) 0%, rgba(17, 24, 39, 0.98) 100%) !important;
+    backdrop-filter: blur(20px) saturate(180%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+    border: 2px solid rgba(255, 255, 255, 0.15) !important;
+    border-radius: 24px !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                0 0 0 1px rgba(255, 255, 255, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+    color: white !important;
+    position: relative !important;
+    z-index: 10001 !important; /* MAIS ALTO que tudo - acima do dialog (10000) */
+    pointer-events: auto !important; /* CRÍTICO: Permitir cliques no conteúdo do modal */
+    margin: 1rem auto !important; /* Centralizado */
+    max-height: 90vh !important;
+    max-width: 90vw !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 0 !important;
+    contain: none !important; /* CRÍTICO: Não ter contain */
+    isolation: auto !important; /* Não criar novo stacking context */
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+/* Removido - já está definido acima */
+
+/* Efeito de brilho sutil no topo */
+#productModal .modal-content::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, 
+        transparent 0%, 
+        rgba(16, 185, 129, 0.5) 50%, 
+        transparent 100%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+/* Modal body - garantir que contenha os selects */
+#productModal .modal-body {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 10002 !important;
+    padding: 2rem !important;
+    overflow: visible !important;
+    max-height: calc(90vh - 200px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    flex: 1;
+    min-height: 0;
+}
+
+/* Responsividade do modal-body */
+@media (max-width: 576px) {
+    #productModal .modal-body {
+        padding: 1.5rem !important;
+    }
+}
+
+/* Container do modal content - garantir que contenha o dropdown mas permita scroll */
+#productModal .modal-content {
+    overflow-y: auto !important; /* Permitir scroll interno do content */
+    overflow-x: hidden !important;
+    position: relative;
+    max-height: 90vh; /* Limitar altura total */
+}
+
+/* Permitir que dropdowns dos selects apareçam mesmo com overflow */
+#productModal .modal-content .variant-section,
+#productModal .modal-content .unit-section {
+    overflow: visible !important;
+}
+
+/* Variant e unit sections - garantir contenção */
+#productModal .variant-section,
+#productModal .unit-section {
+    position: relative;
+    z-index: 10003 !important; /* Acima do body */
+    overflow: visible;
+    margin-bottom: 1.5rem;
+}
+
+/* Todos os elementos interativos do modal */
+#productModal select,
+#productModal input,
+#productModal button,
+#productModal .form-select,
+#productModal .form-control,
+#productModal .btn,
+#productModal .input-group,
+#productModal .input-group-text,
+#productModal .variant-section,
+#productModal .unit-section,
+.premium-modal select,
+.premium-modal input,
+.premium-modal button,
+.premium-modal .form-select,
+.premium-modal .form-control,
+.premium-modal .btn,
+.premium-modal .input-group,
+.premium-modal .input-group-text {
+    pointer-events: auto !important;
+    position: relative !important;
+    z-index: 10003 !important; /* Consistente com sections */
+    cursor: pointer;
+}
+
+/* Inputs específicos não devem ter cursor pointer */
+#productModal input[type="number"],
+#productModal input[type="text"],
+.premium-modal input[type="number"],
+.premium-modal input[type="text"] {
+    cursor: text !important;
+}
+
+/* Select específico - CRÍTICO: garantir que não saia do modal */
+#productModal .form-select {
+    pointer-events: auto !important;
+    z-index: 10003 !important; /* Consistente */
+    position: relative !important;
+    cursor: pointer !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    min-height: 44px; /* Melhor área de toque para mobile */
+}
+
+#productModal .form-select:focus {
+    pointer-events: auto !important;
+    z-index: 10003 !important; /* Consistente */
+    outline: none !important;
+}
+
+#productModal .form-select:focus-visible {
+    outline: 2px solid #10b981 !important;
+    outline-offset: 2px !important;
+}
+
+/* Garantir que o select não abra fora do modal */
+#productModal .unit-section .form-select,
+#productModal .variant-section .form-select {
+    width: 100% !important;
+    position: relative !important;
+}
+
+/* Options do select - garantir que apareçam dentro do modal */
+#productModal .form-select option {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    background: #1f2937 !important;
+    color: white !important;
+}
+
+/* Forçar fechamento do select quando o modal fechar */
+#productModal.hide .form-select,
+#productModal:not(.show) .form-select {
+    size: 1 !important;
 }
 
 .premium-modal .modal-header {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%) !important;
+    backdrop-filter: blur(10px) !important;
+    padding: 1.75rem 1.75rem 1.25rem 1.75rem !important;
+    border-radius: 24px 24px 0 0 !important;
+    flex-shrink: 0;
+    z-index: 10004;
+    position: relative;
 }
 
 .premium-modal .modal-title {
-    color: white;
-    font-weight: 600;
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 1.5rem !important;
+    letter-spacing: -0.5px !important;
+    margin: 0 !important;
 }
 
 .premium-modal .btn-close {
-    filter: invert(1);
+    filter: invert(1) !important;
+    opacity: 0.8 !important;
+    transition: all 0.2s ease !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 8px !important;
+    padding: 0.5rem !important;
+    width: 2rem !important;
+    height: 2rem !important;
+}
+
+.premium-modal .btn-close:hover {
+    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.2) !important;
+    transform: rotate(90deg) !important;
 }
 
 .premium-modal .form-label {
-    color: #d1d5db;
-    font-weight: 500;
-    margin-bottom: 0.5rem;
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 600 !important;
+    margin-bottom: 0.75rem !important;
+    font-size: 0.95rem;
+    letter-spacing: -0.2px;
 }
 
+/* Form Selects e Controls - Design Moderno */
 .premium-modal .form-select,
 .premium-modal .form-control {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: white;
-    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 2px solid rgba(255, 255, 255, 0.15) !important;
+    color: white !important;
+    border-radius: 14px !important;
+    padding: 0.875rem 1.25rem !important;
+    font-size: 1rem !important;
+    font-weight: 500 !important;
+    transition: all 0.3s ease !important;
+    pointer-events: auto !important;
+    cursor: pointer;
+    z-index: 10003 !important;
+    position: relative;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    min-height: 52px;
+}
+
+.premium-modal .form-control {
+    cursor: text !important;
 }
 
 .premium-modal .form-select:focus,
 .premium-modal .form-control:focus {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: #10b981;
-    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
-    color: white;
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2), 
+                0 6px 16px rgba(16, 185, 129, 0.15) !important;
+    color: white !important;
+    outline: none !important;
+    transform: translateY(-2px) !important;
+}
+
+.premium-modal .form-select:hover,
+.premium-modal .form-control:hover {
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .premium-modal .form-select option {
     background: #1f2937;
     color: white;
+    padding: 0.75rem;
 }
 
 .premium-modal .input-group-text {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #d1d5db;
+    background: rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 600 !important;
+    border-radius: 12px 0 0 12px !important;
 }
 
+.premium-modal .input-group .form-control {
+    border-radius: 0 12px 12px 0 !important;
+    border-left: none !important;
+}
+
+.premium-modal .input-group .form-control:focus {
+    border-left: 1.5px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Product Info Card - Design Moderno */
 .product-modal-info {
     display: flex;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 1.5rem;
-    padding: 1rem;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    border: 2px solid rgba(16, 185, 129, 0.2);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+}
+
+.product-modal-info:hover {
+    border-color: rgba(16, 185, 129, 0.4);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
 }
 
 .product-modal-image {
-    width: 60px;
-    height: 60px;
-    border-radius: 8px;
+    width: 100px;
+    height: 100px;
+    border-radius: 20px;
     overflow: hidden;
     flex-shrink: 0;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.25),
+                0 0 0 3px rgba(16, 185, 129, 0.2);
+    border: 3px solid rgba(16, 185, 129, 0.3);
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.product-modal-image:hover {
+    transform: scale(1.05);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.3),
+                0 0 0 3px rgba(16, 185, 129, 0.4);
 }
 
 .product-modal-image img {
@@ -1025,37 +1689,392 @@ document.getElementById('categoryFilter').addEventListener('change', function() 
     object-fit: cover;
 }
 
-.product-modal-details h6 {
-    color: white;
-    font-weight: 600;
-    margin-bottom: 0.25rem;
+.product-modal-details {
+    flex: 1;
+    min-width: 0;
 }
 
-.variant-section,
-.unit-section {
-    margin-bottom: 1rem;
+.product-modal-details .product-name {
+    color: white !important;
+    font-weight: 700 !important;
+    font-size: 1.25rem !important;
+    margin-bottom: 0.5rem !important;
+    letter-spacing: -0.5px;
+    line-height: 1.3;
 }
 
-.total-preview {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem;
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
-    border-radius: 8px;
-    border: 1px solid rgba(16, 185, 129, 0.2);
-    margin-top: 1rem;
-}
-
-.total-label {
-    color: #d1d5db;
+.product-modal-details .product-category {
+    display: inline-block;
+    padding: 0.375rem 0.875rem;
+    background: rgba(16, 185, 129, 0.2);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-size: 0.875rem;
     font-weight: 500;
 }
 
-.total-value {
+/* Form Fields Container */
+.modal-form-fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* Form Field Group */
+.form-field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.form-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.95) !important;
+    font-weight: 600 !important;
+    font-size: 0.95rem !important;
+    margin-bottom: 0 !important;
+    letter-spacing: -0.2px;
+}
+
+.form-label i {
     color: #10b981;
-    font-size: 1.25rem;
+    font-size: 1rem;
+}
+
+.form-label .required {
+    color: #ef4444;
     font-weight: 700;
+    margin-left: 0.25rem;
+}
+
+.form-label .optional {
+    color: rgba(255, 255, 255, 0.6);
+    font-weight: 400;
+    font-size: 0.85rem;
+    margin-left: 0.25rem;
+}
+
+/* Responsividade do product-modal-info */
+@media (max-width: 576px) {
+    .product-modal-info {
+        flex-direction: column;
+        text-align: center;
+        gap: 1rem;
+        padding: 1.25rem;
+    }
+    
+    .product-modal-image {
+        width: 80px;
+        height: 80px;
+    }
+    
+    .product-modal-details .product-name {
+        font-size: 1.1rem !important;
+    }
+}
+
+/* Quantity Input Group - Design Moderno */
+.quantity-input-group {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.quantity-input-group:focus-within {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2),
+                0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.quantity-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.quantity-btn:hover {
+    background: rgba(16, 185, 129, 0.3);
+    color: white;
+}
+
+.quantity-btn:active {
+    transform: scale(0.95);
+    background: rgba(16, 185, 129, 0.4);
+}
+
+.quantity-btn.decrease {
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quantity-btn.increase {
+    border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quantity-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: white;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+    padding: 0.75rem;
+    outline: none;
+}
+
+.quantity-input:focus {
+    outline: none;
+}
+
+/* Price Input Group - Design Moderno */
+.price-input-group {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.price-input-group:focus-within {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.2),
+                0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.currency-symbol {
+    padding: 0.75rem 1rem;
+    background: rgba(16, 185, 129, 0.2);
+    color: #10b981;
+    font-weight: 700;
+    font-size: 1rem;
+    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+}
+
+.price-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    color: white;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 1rem;
+    outline: none;
+}
+
+.price-input::placeholder {
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.price-input:focus {
+    outline: none;
+}
+
+/* Modal Footer - Design Moderno */
+.modal-footer-premium {
+    border-top: 2px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 1.5rem 1.75rem !important;
+    background: linear-gradient(180deg, rgba(16, 185, 129, 0.05) 0%, rgba(5, 150, 105, 0.02) 100%) !important;
+    backdrop-filter: blur(10px) !important;
+    border-radius: 0 0 24px 24px !important;
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    flex-shrink: 0;
+    margin-top: auto;
+}
+
+/* Responsividade do footer */
+@media (max-width: 576px) {
+    .modal-footer-premium {
+        flex-direction: column-reverse;
+        gap: 0.75rem;
+        padding: 1.25rem 1.5rem !important;
+    }
+    
+    .modal-btn-cancel,
+    .modal-btn-add {
+        width: 100%;
+    }
+}
+
+/* Modal Buttons - Design Moderno */
+.modal-btn-cancel {
+    background: rgba(255, 255, 255, 0.08) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 2px solid rgba(255, 255, 255, 0.15) !important;
+    color: rgba(255, 255, 255, 0.9) !important;
+    padding: 0.875rem 1.75rem !important;
+    border-radius: 14px !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    transition: all 0.3s ease !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 52px;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+}
+
+.modal-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(255, 255, 255, 0.25) !important;
+    color: white !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2) !important;
+}
+
+.modal-btn-cancel:active {
+    transform: translateY(0) !important;
+}
+
+.modal-btn-cancel i {
+    font-size: 1.1rem;
+}
+
+.modal-btn-add {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border: none !important;
+    color: white !important;
+    padding: 0.875rem 2rem !important;
+    border-radius: 14px !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35),
+                0 2px 8px rgba(16, 185, 129, 0.25) !important;
+    transition: all 0.3s ease !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 52px;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative;
+    overflow: hidden;
+}
+
+.modal-btn-add::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.modal-btn-add:hover::before {
+    left: 100%;
+}
+
+.modal-btn-add:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.45),
+                0 4px 12px rgba(16, 185, 129, 0.35) !important;
+    color: white !important;
+}
+
+.modal-btn-add:active {
+    transform: translateY(0) !important;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+}
+
+.modal-btn-add i {
+    font-size: 1.2rem;
+}
+
+/* Total Preview - Design Moderno */
+.total-preview {
+    margin-top: 1.5rem;
+    padding: 1.5rem;
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(5, 150, 105, 0.1) 100%);
+    backdrop-filter: blur(10px);
+    border-radius: 18px;
+    border: 2px solid rgba(16, 185, 129, 0.3);
+    box-shadow: 0 8px 24px rgba(16, 185, 129, 0.15),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+}
+
+.total-preview:hover {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 12px 32px rgba(16, 185, 129, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.total-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.total-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: rgba(255, 255, 255, 0.9) !important;
+    font-weight: 600 !important;
+    font-size: 1.1rem !important;
+    letter-spacing: -0.3px;
+}
+
+.total-label i {
+    color: #10b981;
+    font-size: 1.2rem;
+}
+
+.total-value {
+    color: #10b981 !important;
+    font-size: 2rem !important;
+    font-weight: 800 !important;
+    text-shadow: 0 2px 12px rgba(16, 185, 129, 0.4);
+    letter-spacing: -0.5px;
+    line-height: 1;
+}
+
+/* Responsividade do total-preview */
+@media (max-width: 576px) {
+    .total-preview {
+        padding: 1.25rem;
+    }
+    
+    .total-content {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+    
+    .total-value {
+        font-size: 1.75rem !important;
+        width: 100%;
+        text-align: right;
+    }
 }
 
 /* Botão de Finalizar Compra */
@@ -1067,37 +2086,64 @@ document.getElementById('categoryFilter').addEventListener('change', function() 
 
 .checkout-btn {
     width: 100%;
-    background: linear-gradient(135deg, #10b981, #059669);
-    border: none;
-    color: white;
-    padding: 1rem 1.5rem;
-    border-radius: 12px;
-    font-weight: 700;
-    font-size: 1.1rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.5rem;
-    transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    border: none !important;
+    color: white !important;
+    padding: 1rem 1.5rem !important;
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    font-size: 1rem !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 0.5rem !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
+    letter-spacing: 0.5px !important;
+    cursor: pointer !important;
 }
 
 .checkout-btn:hover {
-    background: linear-gradient(135deg, #059669, #047857);
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-    color: white;
+    background: linear-gradient(135deg, #059669 0%, #047857 100%) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4) !important;
+    color: white !important;
 }
 
 .checkout-btn:active {
-    transform: translateY(0);
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    transform: translateY(0) !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
 }
 
 .checkout-btn i {
     font-size: 1.2rem;
+}
+
+.action-btn {
+    background: rgba(255, 255, 255, 0.1) !important;
+    border: 2px solid rgba(255, 255, 255, 0.2) !important;
+    color: white !important;
+    padding: 0.5rem !important;
+    border-radius: 10px !important;
+    font-size: 1rem !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-width: 2.5rem !important;
+    height: 2.5rem !important;
+}
+
+.action-btn:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.3) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+.action-btn i {
+    font-size: 1.1rem;
 }
 
 .cart-item-variant {
@@ -1161,11 +2207,27 @@ function showNotification(message, type = 'info') {
 /* Event listeners for modal */
 document.addEventListener('DOMContentLoaded', function() {
     // Modal quantity and price change listeners
-    document.getElementById('modalQuantity').addEventListener('input', updateModalTotal);
-    document.getElementById('modalPrice').addEventListener('input', updateModalTotal);
+    const modalQuantity = document.getElementById('modalQuantity');
+    const modalPrice = document.getElementById('modalPrice');
+    
+    if (modalQuantity) {
+        modalQuantity.addEventListener('input', updateModalTotal);
+    }
+    
+    if (modalPrice) {
+        modalPrice.addEventListener('input', updateModalTotal);
+    }
     
     // Initialize cart
     initializeCart();
+    
+    // Verificar se Bootstrap está carregado
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap não está carregado!');
+        alert('Erro: Bootstrap não está disponível. Verifique sua conexão e recarregue a página.');
+    } else {
+        console.log('Bootstrap carregado com sucesso');
+    }
 });
 </style>
 @endsection

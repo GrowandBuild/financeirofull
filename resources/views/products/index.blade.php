@@ -65,6 +65,16 @@
                     </div>
                 </div>
             @endforeach
+        @elseif(isset($totalProductsCount) && $totalProductsCount > 0)
+            <div class="no-data-card">
+                <div class="no-data-icon">
+                    <i class="bi bi-graph-up"></i>
+                </div>
+                <div class="no-data-content">
+                    <h4>Nenhum gasto este mês</h4>
+                    <p>Você tem {{ $totalProductsCount }} produto(s) cadastrado(s), mas ainda não há compras registradas este mês</p>
+                </div>
+            </div>
         @else
             <div class="no-data-card">
                 <div class="no-data-icon">
@@ -92,11 +102,11 @@
             @foreach($products as $product)
                 <div class="premium-product-card" onclick="viewProduct({{ $product->id }})">
                     <div class="premium-product-image">
-                        <img data-src="{{ $product->image ?: '/alimentos/steaak.jpg' }}" 
-                             src="{{ asset('images/no-image.png') }}"
+                        <img src="{{ $product->image_url ?? asset('images/no-image.png') }}" 
                              alt="{{ $product->name }}" 
-                             class="img-fluid lazy"
-                             loading="lazy">
+                             class="img-fluid"
+                             loading="lazy"
+                             onerror="this.onerror=null; this.src='{{ asset('images/no-image.png') }}';">
                         <div class="product-overlay">
                             <i class="bi bi-eye"></i>
                         </div>
@@ -149,51 +159,53 @@
 .no-data-card, .no-products-card {
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 16px;
-    padding: 2rem;
+    border-radius: 12px;
+    padding: 1.25rem;
     text-align: center;
     /* backdrop-filter removido para melhor performance */
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 .no-data-icon, .no-products-icon {
-    width: 64px;
-    height: 64px;
+    width: 48px;
+    height: 48px;
     background: rgba(16, 185, 129, 0.2);
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     color: #10b981;
-    font-size: 2rem;
+    font-size: 1.5rem;
 }
 
 .no-data-content h4, .no-products-content h4 {
     color: white;
-    font-size: 1.25rem;
+    font-size: 1rem;
     font-weight: 600;
-    margin: 0 0 0.5rem 0;
+    margin: 0 0 0.375rem 0;
 }
 
 .no-data-content p, .no-products-content p {
     color: rgba(255, 255, 255, 0.7);
-    margin: 0 0 1rem 0;
-    line-height: 1.6;
+    margin: 0 0 0.75rem 0;
+    line-height: 1.5;
+    font-size: 0.875rem;
 }
 
 .premium-btn {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
+    gap: 0.4375rem;
+    padding: 0.625rem 1.25rem;
     background: linear-gradient(135deg, #10b981, #059669);
     color: white;
     text-decoration: none;
-    border-radius: 12px;
+    border-radius: 10px;
     font-weight: 600;
+    font-size: 0.875rem;
     transition: transform 0.2s ease, opacity 0.2s ease;
     border: none;
     cursor: pointer;

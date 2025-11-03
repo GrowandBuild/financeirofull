@@ -38,6 +38,9 @@
         <!-- Custom CSS -->
         <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}" id="main-css">
         
+        @yield('styles')
+        @stack('styles')
+        
         <!-- Chart.js para gráficos (carregamento diferido) -->
         <script>
             // Carregar Chart.js apenas quando necessário
@@ -81,6 +84,37 @@
             </div>
         </div>
         
+        <!-- Desktop Navigation - Dentro do Header -->
+        <div class="desktop-nav-in-header">
+            <a href="{{ route('products.index') }}" class="desktop-nav-item-inline {{ request()->routeIs('products.index') ? 'active' : '' }}">
+                <i class="bi bi-house-door"></i>
+                <span>Início</span>
+            </a>
+            <a href="{{ route('products.search') }}" class="desktop-nav-item-inline {{ request()->routeIs('products.search') ? 'active' : '' }}">
+                <i class="bi bi-search"></i>
+                <span>Buscar</span>
+            </a>
+            <a href="{{ route('products.compra') }}" class="desktop-nav-item-inline {{ request()->routeIs('products.compra') ? 'active' : '' }}">
+                <i class="bi bi-cart3"></i>
+                <span>Comprar</span>
+            </a>
+            @auth
+            <a href="{{ route('cashflow.dashboard') }}" class="desktop-nav-item-inline {{ request()->routeIs('cashflow.*') ? 'active' : '' }}">
+                <i class="bi bi-cash-coin"></i>
+                <span>Fluxo de Caixa</span>
+            </a>
+            <a href="{{ route('admin.products.index') }}" class="desktop-nav-item-inline {{ request()->routeIs('admin.*') ? 'active' : '' }}">
+                <i class="bi bi-gear"></i>
+                <span>Admin</span>
+            </a>
+            @else
+            <a href="{{ route('login') }}" class="desktop-nav-item-inline">
+                <i class="bi bi-person"></i>
+                <span>Login</span>
+            </a>
+            @endauth
+        </div>
+        
         <!-- Total Mensal e Status -->
         <div class="monthly-info">
             @php
@@ -114,7 +148,7 @@
                 </div>
             </div>
             <div id="online-status" class="online-indicator">
-                <i class="bi bi-wifi"></i> Online
+                <i class="bi bi-wifi"></i>
             </div>
         </div>
     </div>
@@ -192,6 +226,11 @@
         @yield('content')
     </div>
     
+    {{-- Modal renderizado aqui, FORA do mobile-container, para evitar conflitos de CSS --}}
+    @if(request()->routeIs('products.*') || request()->routeIs('admin.products.*'))
+        @include('components.product-modal')
+    @endif
+    
     <!-- Bottom Navigation -->
     <div class="bottom-nav">
         <div class="row w-100">
@@ -244,44 +283,19 @@
     <!-- Bootstrap 5.3 JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- PWA Service Worker DESABILITADO - estava causando problemas -->
-    <!-- Service Worker desabilitado para evitar interferências com navegação e cliques -->
+    <!-- Sistema de Notificações -->
+    <script src="{{ asset('js/notifications.js') }}?v={{ filemtime(public_path('js/notifications.js')) }}"></script>
+    
+    <!-- Product Modal Manager -->
+    <script src="{{ asset('js/product-modal.js') }}?v={{ filemtime(public_path('js/product-modal.js')) }}"></script>
+    
+    <!-- Service Worker Desregistrar (PWA desabilitado) -->
     <script>
-        // Service Worker desabilitado
-        // Desregistrar qualquer Service Worker existente
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                for(let registration of registrations) {
-                    registration.unregister().then(function(boolean) {
-                        console.log('Service Worker desregistrado:', boolean);
-                    });
-                }
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                registrations.forEach(registration => registration.unregister());
             });
         }
-        
-        // REFATORAÇÃO COMPLETA - Sistema limpo sem interceptações problemáticas
-        document.addEventListener('DOMContentLoaded', function() {
-            // PROTEÇÃO: Garantir que formulários NUNCA sejam interceptados
-            // Não adicionar NENHUM listener em formulários ou seus botões
-            
-            // PROTEÇÃO: Garantir que links da navegação inferior funcionem
-            // Usar delegation simples e específico apenas para links de navegação
-            const bottomNav = document.querySelector('.bottom-nav');
-            if (bottomNav) {
-                // Apenas para links da navegação - não interfere com nada mais
-                bottomNav.addEventListener('click', function(e) {
-                    const clickedElement = e.target;
-                    // Verificar se é um link da navegação
-                    if (clickedElement.tagName === 'A' && clickedElement.classList.contains('nav-item-custom')) {
-                        // Link da navegação - permitir comportamento padrão
-                        // Não fazer nada - deixar o navegador processar normalmente
-                        return true;
-                    }
-                    // Se não for link de navegação, permitir comportamento padrão
-                    return true;
-                }, false);
-            }
-        });
     </script>
     
     @yield('scripts')

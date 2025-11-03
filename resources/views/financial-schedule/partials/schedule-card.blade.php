@@ -38,16 +38,17 @@
             
             <div class="schedule-footer">
                 <div class="schedule-info">
+                    @if($schedule->category)
+                    <div class="schedule-category">
+                        <i class="bi bi-tag"></i> {{ $schedule->category->name }}
+                    </div>
+                    @endif
                     <div class="schedule-amount">
                         {{ $schedule->formatted_amount }}
                     </div>
                     <div class="schedule-meta">
                         <i class="bi bi-calendar-event"></i> 
                         {{ $schedule->scheduled_date->format('d/m/Y') }}
-                        @if($schedule->category)
-                            <span class="schedule-category-separator">•</span>
-                            <i class="bi bi-tag"></i> {{ $schedule->category->name }}
-                        @endif
                     </div>
                 </div>
                 
@@ -86,8 +87,8 @@
                     <form action="{{ route('financial-schedule.destroy', $schedule->id) }}" method="POST" class="schedule-action-form" onsubmit="return confirm('Tem certeza que deseja excluir este item?')">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="btn btn-danger btn-sm schedule-action-btn schedule-delete-btn">
-                            <i class="bi bi-trash"></i> <span class="schedule-btn-text-mobile">Excluir</span>
+                        <button type="submit" class="btn btn-danger btn-sm schedule-action-btn schedule-delete-btn" title="Excluir">
+                            <i class="bi bi-trash"></i>
                         </button>
                     </form>
                 </div>

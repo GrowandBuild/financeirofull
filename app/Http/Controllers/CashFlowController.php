@@ -6,6 +6,7 @@ use App\Models\CashFlow;
 use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Collection;
 use Carbon\Carbon;
 
 class CashFlowController extends Controller
@@ -48,27 +49,40 @@ class CashFlowController extends Controller
             ->limit(5)
             ->get();
         
-        // Dados para gráfico (últimos 6 meses)
+        // Dados para gráfico (últimos 6 meses) - otimizado com uma única query
         $chartData = [];
+        $months = [];
         for ($i = 5; $i >= 0; $i--) {
             $month = $currentMonth->copy()->subMonths($i);
-            $monthStart = $month->copy()->startOfMonth();
-            $monthEnd = $month->copy()->endOfMonth();
+            $months[] = [
+                'month' => $month->format('M/Y'),
+                'start' => $month->copy()->startOfMonth(),
+                'end' => $month->copy()->endOfMonth()
+            ];
+        }
+        
+        // Buscar todos os dados de uma vez
+        $monthlyData = CashFlow::where('user_id', $user->id)
+            ->confirmed()
+            ->select('type', 'amount', 'transaction_date')
+            ->whereBetween('transaction_date', [
+                $months[0]['start'],
+                $months[5]['end']
+            ])
+            ->get()
+            ->groupBy(function($item) {
+                return $item->transaction_date->format('Y-m');
+            });
+        
+        foreach ($months as $monthInfo) {
+            $monthKey = Carbon::parse($monthInfo['start'])->format('Y-m');
+            $monthTransactions = $monthlyData->get($monthKey, collect());
             
-            $income = CashFlow::where('user_id', $user->id)
-                ->income()
-                ->confirmed()
-                ->byDateRange($monthStart, $monthEnd)
-                ->sum('amount');
-                
-            $expense = CashFlow::where('user_id', $user->id)
-                ->expense()
-                ->confirmed()
-                ->byDateRange($monthStart, $monthEnd)
-                ->sum('amount');
+            $income = $monthTransactions->where('type', 'income')->sum('amount');
+            $expense = $monthTransactions->where('type', 'expense')->sum('amount');
             
             $chartData[] = [
-                'month' => $month->format('M/Y'),
+                'month' => $monthInfo['month'],
                 'income' => $income,
                 'expense' => $expense,
                 'balance' => $income - $expense
@@ -151,25 +165,29 @@ class CashFlowController extends Controller
     {
         $user = Auth::user();
         
-        // Dados para relatórios
+        // Dados para relatórios - otimizado com uma única query
         $currentYear = Carbon::now()->year;
-        $yearlyData = [];
+        $yearStart = Carbon::create($currentYear, 1, 1)->startOfYear();
+        $yearEnd = Carbon::create($currentYear, 12, 31)->endOfYear();
         
+        // Buscar todos os dados do ano de uma vez
+        $yearlyTransactions = CashFlow::where('user_id', $user->id)
+            ->confirmed()
+            ->select('type', 'amount', 'transaction_date')
+            ->whereBetween('transaction_date', [$yearStart, $yearEnd])
+            ->get()
+            ->groupBy(function($item) {
+                return $item->transaction_date->format('Y-m');
+            });
+        
+        $yearlyData = [];
         for ($month = 1; $month <= 12; $month++) {
             $monthStart = Carbon::create($currentYear, $month, 1)->startOfMonth();
-            $monthEnd = Carbon::create($currentYear, $month, 1)->endOfMonth();
+            $monthKey = $monthStart->format('Y-m');
             
-            $income = CashFlow::where('user_id', $user->id)
-                ->income()
-                ->confirmed()
-                ->byDateRange($monthStart, $monthEnd)
-                ->sum('amount');
-                
-            $expense = CashFlow::where('user_id', $user->id)
-                ->expense()
-                ->confirmed()
-                ->byDateRange($monthStart, $monthEnd)
-                ->sum('amount');
+            $monthTransactions = $yearlyTransactions->get($monthKey, collect());
+            $income = $monthTransactions->where('type', 'income')->sum('amount');
+            $expense = $monthTransactions->where('type', 'expense')->sum('amount');
             
             $yearlyData[] = [
                 'month' => $monthStart->format('M'),

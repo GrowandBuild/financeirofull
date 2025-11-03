@@ -79,14 +79,14 @@
         </div>
 
         <!-- Action Bar -->
-        <div class="chart-section mb-6" style="max-width: 100%; overflow-x: hidden; word-wrap: break-word;">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style="flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 0; word-wrap: break-word;">
-                    <h3 class="section-title">
+        <div class="chart-section mb-6" style="max-width: 100%; overflow-x: hidden; word-wrap: break-word; box-sizing: border-box;">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style="flex-wrap: wrap; width: 100%; box-sizing: border-box;">
+                <div style="flex: 1; min-width: 0; word-wrap: break-word; box-sizing: border-box;">
+                    <h3 class="section-title" style="margin: 0; padding: 0;">
                         <i class="bi bi-list-ul"></i>
                         Lista de Produtos
                     </h3>
-                    <p class="text-white/60 text-sm mt-1" style="word-wrap: break-word;">Gerencie todos os seus produtos</p>
+                    <p class="text-white/60 text-sm mt-1" style="word-wrap: break-word; margin-top: 0.25rem;">Gerencie todos os seus produtos</p>
                 </div>
                 <div class="flex gap-2" style="flex-wrap: wrap;">
                     <a href="{{ route('admin.products.create') }}" class="premium-btn primary">
@@ -108,8 +108,8 @@
             @forelse($products as $product)
                 <div class="premium-product-card group">
                     <div class="premium-product-image">
-                        @if($product->image)
-                            <img src="{{ $product->image }}" alt="{{ $product->name }}">
+                        @if($product->image || $product->image_path)
+                            <img src="{{ $product->image_url }}" alt="{{ $product->name }}">
                             <div class="product-overlay">
                                 <i class="bi bi-eye"></i>
                             </div>
@@ -155,28 +155,27 @@
                     </div>
 
                     <!-- Action Buttons -->
-                    <div class="flex flex-col gap-2" style="min-width: 0; flex-shrink: 0; max-width: 100%;">
+                    <div class="product-actions">
                         <a href="{{ route('admin.products.show', $product) }}" 
-                           class="premium-btn outline text-xs py-2 px-3" style="word-wrap: break-word; white-space: nowrap;">
+                           class="premium-btn outline" title="Ver detalhes">
                             <i class="bi bi-eye"></i>
-                            <span class="d-none d-sm-inline">Ver</span>
+                            <span class="btn-text">Ver</span>
                         </a>
                         <a href="{{ route('admin.products.edit', $product) }}" 
-                           class="premium-btn secondary text-xs py-2 px-3" style="word-wrap: break-word; white-space: nowrap;">
+                           class="premium-btn secondary" title="Editar produto">
                             <i class="bi bi-pencil"></i>
-                            <span class="d-none d-sm-inline">Editar</span>
+                            <span class="btn-text">Editar</span>
                         </a>
                         <form action="{{ route('admin.products.destroy', $product) }}" 
                               method="POST" 
-                              class="inline"
-                              style="width: 100%;"
+                              class="inline delete-form"
                               onsubmit="return confirm('Tem certeza que deseja excluir este produto?')">
                             @csrf
                             @method('DELETE')
                             <button type="submit" 
-                                    class="w-full bg-red-500/20 hover:bg-red-500/30 text-red-300 hover:text-red-200 border border-red-500/30 hover:border-red-500/50 rounded-lg py-2 px-3 text-xs transition-all duration-200" style="word-wrap: break-word; white-space: nowrap;">
+                                    class="premium-btn danger" title="Excluir produto">
                                 <i class="bi bi-trash"></i>
-                                <span class="d-none d-sm-inline">Excluir</span>
+                                <span class="btn-text">Excluir</span>
                             </button>
                         </form>
                     </div>
@@ -213,17 +212,28 @@
 
 <style>
 /* Admin specific styles */
+.chart-section {
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+}
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
     margin-bottom: 2rem;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .premium-product-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: visible;
 }
 
 .premium-product-card {
@@ -232,16 +242,21 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    padding: 1.5rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto 1fr;
     gap: 1rem;
+    padding: 1.5rem;
     text-decoration: none;
+    width: 100%;
     max-width: 100%;
-    overflow-x: hidden;
+    min-width: 0;
+    overflow: visible;
     word-wrap: break-word;
     overflow-wrap: break-word;
     box-sizing: border-box;
+    align-items: start;
+    position: relative;
 }
 
 .premium-product-card:hover {
@@ -252,11 +267,13 @@
 
 .premium-product-image {
     position: relative;
-    width: 80px;
-    height: 80px;
+    width: 100px;
+    height: 100px;
+    min-width: 100px;
     flex-shrink: 0;
     border-radius: 12px;
     overflow: hidden;
+    grid-row: 1 / -1;
 }
 
 .premium-product-image img {
@@ -302,6 +319,75 @@
 .premium-product-info {
     flex: 1;
     min-width: 0;
+    max-width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    overflow: hidden;
+}
+
+.product-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 110px;
+    max-width: 140px;
+    grid-row: 1 / -1;
+    align-self: start;
+    flex-shrink: 0;
+    overflow: visible;
+}
+
+.product-actions .premium-btn {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    width: 100%;
+    min-width: 0;
+    text-align: center;
+    justify-content: center;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: ellipsis;
+}
+
+.product-actions .premium-btn .btn-text {
+    display: inline-block;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+@media (max-width: 640px) {
+    .product-actions .premium-btn .btn-text {
+        display: none;
+    }
+    
+    .product-actions .premium-btn {
+        min-width: 2.5rem;
+        width: auto;
+        padding: 0.5rem;
+    }
+}
+
+.premium-btn.danger {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.2));
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.premium-btn.danger:hover {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(220, 38, 38, 0.3));
+    color: #fee2e2;
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.delete-form {
+    width: 100%;
+    margin: 0;
+}
+
+.delete-form button {
+    width: 100%;
 }
 
 .premium-product-name {
@@ -415,27 +501,63 @@
 }
 
 /* Responsive adjustments */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
+    .premium-product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 1rem;
+        width: 100%;
+    }
+    
     .premium-product-card {
-        flex-direction: column;
-        text-align: center;
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
+@media (max-width: 768px) {
+    .premium-product-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        width: 100%;
+    }
+    
+    .premium-product-card {
+        grid-template-columns: 80px 1fr;
+        grid-template-rows: auto auto;
         padding: 1rem !important;
         gap: 0.75rem !important;
+        width: 100%;
+        max-width: 100%;
     }
     
     .premium-product-image {
-        width: 60px;
-        height: 60px;
+        width: 80px;
+        height: 80px;
+        grid-row: 1 / 2;
+    }
+    
+    .premium-product-info {
+        grid-column: 2 / -1;
+        grid-row: 1 / 2;
+    }
+    
+    .product-actions {
+        grid-column: 1 / -1;
+        grid-row: 2 / -1;
+        flex-direction: row;
+        gap: 0.5rem;
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+    
+    .product-actions .premium-btn {
+        flex: 1;
+        min-width: 0;
     }
     
     .stats-grid {
         grid-template-columns: 1fr 1fr;
         gap: 0.75rem;
-    }
-    
-    .premium-product-info {
-        width: 100%;
-        text-align: center;
     }
     
     .premium-product-name,
@@ -447,19 +569,16 @@
     
     .chart-section {
         padding: 1rem !important;
-    }
-    
-    .premium-product-card > .flex.flex-col {
         width: 100%;
-        margin-left: 0 !important;
-        flex-direction: row;
-        justify-content: center;
-        gap: 0.5rem;
+        box-sizing: border-box;
     }
     
-    .premium-product-card > .flex.flex-col > * {
-        flex: 1;
-        min-width: 0;
+    .section-title {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 }
 
@@ -470,15 +589,20 @@
     }
     
     .premium-product-card {
+        grid-template-columns: 60px 1fr;
         padding: 0.875rem !important;
     }
     
-    .premium-product-card > .flex.flex-col {
-        flex-direction: column;
-        width: 100%;
+    .premium-product-image {
+        width: 60px;
+        height: 60px;
     }
     
-    .premium-product-card > .flex.flex-col > * {
+    .product-actions {
+        flex-direction: column;
+    }
+    
+    .product-actions .premium-btn {
         width: 100%;
     }
     
@@ -493,30 +617,52 @@
     }
 }
 
+@media (min-width: 1200px) {
+    .premium-product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+        width: 100%;
+    }
+    
+    .premium-product-card {
+        width: 100%;
+        max-width: 100%;
+    }
+}
+
 /* Override mobile-container for admin pages */
 .premium-content {
     max-width: none !important;
     width: 100% !important;
     overflow-x: hidden !important;
+    box-sizing: border-box !important;
 }
 
 .premium-content .max-w-6xl {
     max-width: 1200px !important;
     overflow-x: hidden !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
 }
 
 /* Ensure proper spacing on larger screens */
 @media (min-width: 1024px) {
     .premium-content {
         padding: 2rem 1rem;
+        width: 100%;
+        box-sizing: border-box;
     }
     
     .chart-section {
         padding: 1.5rem;
+        width: 100%;
+        box-sizing: border-box;
     }
     
     .premium-product-card {
         padding: 1.5rem;
+        width: 100%;
+        max-width: 100%;
     }
 }
 
@@ -525,21 +671,6 @@
     .stats-grid {
         grid-template-columns: repeat(4, 1fr);
         gap: 1.5rem;
-    }
-    
-    .actions-section {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    
-    .premium-product-card {
-        flex-direction: row;
-        align-items: center;
-    }
-    
-    .premium-product-card > .flex.flex-col {
-        margin-left: 1rem;
-        width: auto;
-        min-width: 120px;
     }
 }
 
@@ -550,6 +681,7 @@
     padding-right: 1rem !important;
     padding-top: 1rem !important;
     max-width: 100%;
+    width: 100%;
     overflow-x: hidden;
     box-sizing: border-box;
 }

@@ -31,6 +31,8 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ asset('css/app.css') }}?v={{ filemtime(public_path('css/app.css')) }}" id="main-css">
     
+    @yield('styles')
+    
     <!-- Chart.js para gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
@@ -56,6 +58,26 @@
                     <span class="quote-text" id="financeQuoteText">Pague-se primeiro: guarde pelo menos 10% da sua renda</span>
                 </div>
             </div>
+        </div>
+        
+        <!-- Desktop Navigation - Dentro do Header -->
+        <div class="desktop-nav-in-header">
+            <a href="{{ route('cashflow.dashboard') }}" class="desktop-nav-item-inline {{ request()->routeIs('cashflow.dashboard') ? 'active' : '' }}">
+                <i class="bi bi-speedometer2"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{{ route('cashflow.transactions') }}" class="desktop-nav-item-inline {{ request()->routeIs('cashflow.transactions') ? 'active' : '' }}">
+                <i class="bi bi-list-ul"></i>
+                <span>Transações</span>
+            </a>
+            <a href="{{ route('cashflow.add') }}" class="desktop-nav-item-inline {{ request()->routeIs('cashflow.add') ? 'active' : '' }}">
+                <i class="bi bi-plus-circle"></i>
+                <span>Adicionar</span>
+            </a>
+            <a href="{{ route('cashflow.reports') }}" class="desktop-nav-item-inline {{ request()->routeIs('cashflow.reports') ? 'active' : '' }}">
+                <i class="bi bi-graph-up"></i>
+                <span>Relatórios</span>
+            </a>
         </div>
         
         <!-- Total Mensal e Status -->
@@ -91,7 +113,7 @@
                 </div>
             </div>
             <div id="online-status" class="online-indicator">
-                <i class="bi bi-wifi"></i> Online
+                <i class="bi bi-wifi"></i>
             </div>
         </div>
     </div>

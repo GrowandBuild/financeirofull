@@ -207,9 +207,26 @@
 
 .product-info-section {
     display: grid;
-    grid-template-columns: 300px 1fr;
+    grid-template-columns: minmax(250px, 350px) 1fr;
     gap: 2rem;
     align-items: start;
+}
+
+@media (max-width: 768px) {
+    .product-info-section {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .product-image-container {
+        max-width: 100%;
+        margin: 0 auto;
+    }
+    
+    .product-main-image,
+    .no-image-placeholder {
+        height: 250px;
+    }
 }
 
 .product-image-container {
@@ -263,7 +280,14 @@
 
 .info-grid {
     display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
     gap: 1rem;
+}
+
+@media (max-width: 768px) {
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .info-item {
@@ -324,6 +348,12 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 1rem;
+}
+
+@media (max-width: 640px) {
+    .variants-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .variant-card {
@@ -432,8 +462,7 @@
 }
 
 .purchases-list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
     gap: 0.75rem;
 }
 
@@ -442,10 +471,22 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
     padding: 1rem;
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1rem;
     align-items: center;
     transition: all 0.3s ease;
+}
+
+@media (max-width: 640px) {
+    .purchase-item {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .purchase-details {
+        align-items: flex-start !important;
+    }
 }
 
 .purchase-item:hover {
@@ -486,35 +527,23 @@
     gap: 0.5rem;
 }
 
-/* Responsividade */
-@media (max-width: 768px) {
-    .product-info-section {
-        grid-template-columns: 1fr;
+/* Responsividade adicional */
+@media (max-width: 480px) {
+    .product-details-container {
+        padding: 1rem;
         gap: 1.5rem;
     }
     
-    .product-image-container {
-        max-width: 300px;
-        margin: 0 auto;
-    }
-    
-    .variants-grid {
+    .stats-grid {
         grid-template-columns: 1fr;
     }
     
-    .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    }
-    
-    .purchase-item {
+    .section-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: 0.75rem;
-    }
-    
-    .purchase-details {
-        align-items: flex-start;
+        gap: 0.5rem;
     }
 }
 </style>
+@endsection
 @endsection

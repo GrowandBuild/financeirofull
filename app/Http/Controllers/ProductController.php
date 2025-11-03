@@ -6,40 +6,30 @@ use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\CashFlow;
 use App\Models\Category;
+use App\Services\ProductStatsService;
+use App\Policies\PurchasePolicy;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
+    protected $statsService;
+
+    public function __construct(ProductStatsService $statsService)
+    {
+        $this->statsService = $statsService;
+    }
+
     public function index()
     {
-        // Calcular estatísticas em uma única consulta para todos os produtos
-        $monthlyStats = DB::table('purchases')
-            ->select('product_id')
-            ->selectRaw('SUM(total_value) as monthly_spend')
-            ->whereMonth('purchase_date', now()->month)
-            ->whereYear('purchase_date', now()->year)
-            ->groupBy('product_id')
-            ->pluck('monthly_spend', 'product_id');
-
-        // Top produtos - calcular diretamente usando JOIN para evitar carregar todos os produtos
-        $topProductIds = collect($monthlyStats)
-            ->sortByDesc(function ($spend) {
-                return $spend;
-            })
-            ->take(2)
-            ->keys();
+        // Verificar se há produtos cadastrados
+        $totalProductsCount = Product::count();
         
-        $topProducts = Product::select(['id', 'name', 'category'])
-            ->whereIn('id', $topProductIds)
-            ->get()
-            ->map(function ($product) use ($monthlyStats) {
-                $product->monthly_spend = $monthlyStats[$product->id] ?? 0;
-                return $product;
-            })
-            ->sortByDesc('monthly_spend');
+        // Obter top produtos usando Service
+        $topProducts = $this->statsService->getTopProductsByMonthlySpend(2);
 
-        // Paginação de produtos - otimizado para pegar apenas IDs necessários para estatísticas
+        // Paginação de produtos
         $products = Product::select([
             'id', 'name', 'category', 'unit', 'description', 
             'image', 'image_path', 'variants', 'has_variants',
@@ -48,18 +38,18 @@ class ProductController extends Controller
         ->withCount('purchases')
         ->paginate(12);
 
-        // Aplicar estatísticas calculadas apenas para os produtos da página atual
-        $pageProductIds = $products->pluck('id');
-        $pageMonthlyStats = $monthlyStats->only($pageProductIds);
+        // Calcular estatísticas mensais para produtos da página atual usando Service
+        // Converter o paginator para Collection para passar ao serviço
+        $monthlyStats = $this->statsService->getMonthlyStatsForProducts($products->getCollection());
         
-        $products->each(function ($product) use ($pageMonthlyStats) {
-            $product->monthly_spend = $pageMonthlyStats[$product->id] ?? 0;
+        $products->each(function ($product) use ($monthlyStats) {
+            $product->monthly_spend = $monthlyStats[$product->id] ?? 0;
         });
         
-        // Gasto total mensal
-        $totalMonthlySpend = $monthlyStats->sum();
+        // Gasto total mensal usando Service
+        $totalMonthlySpend = $this->statsService->getTotalMonthlySpend();
 
-        return view('products.index', compact('products', 'topProducts', 'totalMonthlySpend'));
+        return view('products.index', compact('products', 'topProducts', 'totalMonthlySpend', 'totalProductsCount'));
     }
 
     public function show(Product $product)
@@ -70,44 +60,9 @@ class ProductController extends Controller
                   ->orderBy('purchase_date', 'desc');
         }]);
 
-        // Calcular estatísticas reais
+        // Calcular estatísticas usando Service
         $hasPurchases = $product->purchases->count() > 0;
-        
-        $priceStats = [
-            'min_price' => 0,
-            'max_price' => 0,
-            'avg_price' => 0,
-            'trend' => 'stable',
-            'trend_percent' => 0,
-            'chart_data' => []
-        ];
-        
-        if ($hasPurchases) {
-            $priceStats['min_price'] = $product->purchases->min('price');
-            $priceStats['max_price'] = $product->purchases->max('price');
-            $priceStats['avg_price'] = $product->purchases->avg('price');
-            
-            // Calcular tendência (purchases já vem ordenado por desc)
-            $recentPrices = $product->purchases->take(2)->pluck('price')->toArray();
-            if (count($recentPrices) >= 2) {
-                if ($recentPrices[0] > $recentPrices[1]) {
-                    $priceStats['trend'] = 'up';
-                    $priceStats['trend_percent'] = (($recentPrices[0] - $recentPrices[1]) / $recentPrices[1]) * 100;
-                } elseif ($recentPrices[0] < $recentPrices[1]) {
-                    $priceStats['trend'] = 'down';
-                    $priceStats['trend_percent'] = (($recentPrices[1] - $recentPrices[0]) / $recentPrices[1]) * 100;
-                }
-            }
-            
-            // Preparar dados para o gráfico (últimos 7 registros)
-            $chartPurchases = $product->purchases->take(7)->reverse()->values();
-            $priceStats['chart_data'] = [
-                'labels' => $chartPurchases->pluck('purchase_date')->map(function($date) {
-                    return $date->format('d/m');
-                })->toArray(),
-                'prices' => $chartPurchases->pluck('price')->toArray()
-            ];
-        }
+        $priceStats = $this->statsService->getPriceStats($product);
 
         return view('products.show', compact('product', 'hasPurchases', 'priceStats'));
     }
@@ -154,16 +109,8 @@ class ProductController extends Controller
         
         $products = $productsQuery->withCount('purchases')->get();
 
-        // Calcular estatísticas mensais em lote
-        $productIds = $products->pluck('id');
-        $monthlyStats = DB::table('purchases')
-            ->select('product_id')
-            ->selectRaw('SUM(total_value) as monthly_spend')
-            ->whereIn('product_id', $productIds)
-            ->whereMonth('purchase_date', now()->month)
-            ->whereYear('purchase_date', now()->year)
-            ->groupBy('product_id')
-            ->pluck('monthly_spend', 'product_id');
+        // Calcular estatísticas mensais em lote usando Service
+        $monthlyStats = $this->statsService->getMonthlyStatsForProducts($products);
 
         // Aplicar estatísticas
         $products->each(function ($product) use ($monthlyStats) {
@@ -227,38 +174,24 @@ class ProductController extends Controller
 
     public function compra()
     {
-        // Otimizar: carregar produtos com chunk se houver muitos, mas por enquanto usar limit
-        // para evitar timeout. Se houver necessidade de todos os produtos, considerar
-        // implementar paginação ou lazy loading na view
-        
-        // Carregar produtos em lotes para evitar timeout
+        // Carregar produtos paginados para melhor performance
         $products = Product::select([
             'id', 'name', 'category', 'unit', 'description',
             'image', 'image_path', 'variants', 'has_variants',
             'average_price', 'last_price', 'total_spent', 'purchase_count'
         ])
         ->orderBy('name')
-        ->limit(500) // Limitar para evitar timeout - ajustar conforme necessário
-        ->get();
+        ->paginate(100); // Usar paginação em vez de limit arbitrário
 
-        // Calcular estatísticas mensais em lote apenas para produtos carregados
-        $productIds = $products->pluck('id');
-        
-        // Otimizar query de estatísticas mensais usando índice se possível
-        $monthlyStats = DB::table('purchases')
-            ->select('product_id')
-            ->selectRaw('SUM(total_value) as monthly_spend')
-            ->whereIn('product_id', $productIds)
-            ->whereMonth('purchase_date', now()->month)
-            ->whereYear('purchase_date', now()->year)
-            ->groupBy('product_id')
-            ->pluck('monthly_spend', 'product_id');
+        // Calcular estatísticas mensais usando Service
+        // Converter o paginator para Collection para passar ao serviço
+        $monthlyStats = $this->statsService->getMonthlyStatsForProducts($products->getCollection());
         
         $products->each(function ($product) use ($monthlyStats) {
             $product->monthly_spend = $monthlyStats[$product->id] ?? 0;
         });
 
-        // Otimizar: buscar categorias de forma mais eficiente
+        // Buscar categorias
         $categories = Product::select('category')
             ->distinct()
             ->whereNotNull('category')
@@ -273,7 +206,7 @@ class ProductController extends Controller
      */
     public function apiProducts()
     {
-        return Product::select('id', 'name', 'category', 'unit', 'variants', 'has_variants', 'image', 'image_path')
+        $products = Product::select('id', 'name', 'category', 'unit', 'variants', 'has_variants', 'image', 'image_path')
             ->get()
             ->map(function ($product) {
                 return [
@@ -282,10 +215,12 @@ class ProductController extends Controller
                     'category' => $product->category,
                     'unit' => $product->unit,
                     'variants' => $product->variants ?? [],
-                    'has_variants' => $product->has_variants,
+                    'has_variants' => $product->has_variants ?? false,
                     'image_url' => $product->image_url
                 ];
             });
+        
+        return response()->json($products);
     }
     
     public function apiStore(Request $request)
@@ -330,35 +265,31 @@ class ProductController extends Controller
     }
     
     /**
-     * Salvar compra realizada - VERSÃO SIMPLIFICADA PARA TESTE
+     * Salvar compra realizada
      */
     public function savePurchase(Request $request)
     {
-        \Log::info('SavePurchase called', ['request' => $request->all()]);
+        // Validação completa
+        $request->validate([
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|integer|exists:products,id',
+            'items.*.quantity' => 'required|numeric|min:0.01',
+            'items.*.price' => 'required|numeric|min:0.01',
+            'items.*.variant' => 'nullable|string|max:255',
+            'store' => 'required|string|max:255',
+            'date' => 'required|date'
+        ]);
         
-        // Validação simplificada para teste
-        if (!$request->has('items') || empty($request->items)) {
-            \Log::error('Nenhum item na compra', ['request_data' => $request->all()]);
+        if (empty($request->items)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Nenhum item na compra'
             ], 400);
         }
         
-        // Debug detalhado dos itens
-        \Log::info('Items recebidos:', ['items' => $request->items, 'count' => count($request->items)]);
-        
-        // Validar se todos os itens têm product_id
+        // Validar se todos os itens têm product_id válido
         foreach ($request->items as $index => $item) {
-            \Log::info("Validando item {$index}", ['item' => $item, 'has_product_id' => isset($item['product_id'])]);
-            
-            if (!isset($item['product_id']) || empty($item['product_id'])) {
-                \Log::error('Item sem product_id válido', [
-                    'item' => $item, 
-                    'index' => $index,
-                    'product_id_value' => $item['product_id'] ?? 'NOT_SET',
-                    'product_id_type' => gettype($item['product_id'] ?? null)
-                ]);
+            if (!isset($item['product_id']) || empty($item['product_id']) || !Product::find($item['product_id'])) {
                 return response()->json([
                     'success' => false,
                     'message' => "Item {$index} não possui product_id válido"
@@ -369,32 +300,26 @@ class ProductController extends Controller
         try {
             $purchases = [];
             $totalAmount = 0;
-            $userId = auth()->id() ?? 1; // Fallback para teste
+            $userId = Auth::id();
             
-            \Log::info('User ID para Fluxo de Caixa', ['user_id' => $userId, 'auth_check' => auth()->check()]);
+            if (!$userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Usuário não autenticado'
+                ], 401);
+            }
             
             // Buscar ou criar categoria de compras
-            $purchaseCategory = Category::where('name', 'Compras')
-                ->where('user_id', $userId)
-                ->first();
-            
-            if (!$purchaseCategory) {
-                try {
-                    $purchaseCategory = Category::create([
-                        'name' => 'Compras',
-                        'type' => 'expense',
-                        'user_id' => $userId,
-                        'is_active' => true
-                    ]);
-                    \Log::info('Categoria de compras criada', ['category_id' => $purchaseCategory->id]);
-                } catch (\Exception $e) {
-                    \Log::error('Erro ao criar categoria de compras', ['error' => $e->getMessage()]);
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Erro ao criar categoria: ' . $e->getMessage()
-                    ], 500);
-                }
-            }
+            $purchaseCategory = Category::firstOrCreate(
+                [
+                    'name' => 'Compras',
+                    'user_id' => $userId
+                ],
+                [
+                    'type' => 'expense',
+                    'is_active' => true
+                ]
+            );
             
             // Criar as compras e seus cashflows
             $cashFlows = [];
@@ -435,29 +360,29 @@ class ProductController extends Controller
                 $purchases[] = $purchase;
                 $cashFlows[] = $cashFlow;
                 $totalAmount += $purchase->total_value;
-                
-                \Log::info('Compra e cashflow criados', [
-                    'purchase_id' => $purchase->id,
-                    'cash_flow_id' => $cashFlow->id,
-                    'amount' => $purchase->total_value,
-                    'department' => $department,
-                    'store' => $request->store
-                ]);
             }
+            
+            // Atualizar estatísticas dos produtos em lote usando Service
+            $productIds = array_unique(array_column($request->items, 'product_id'));
+            $this->statsService->updateProductStats($productIds);
             
             return response()->json([
                 'success' => true,
                 'message' => 'Compra salva com sucesso e registrada no Fluxo de Caixa!',
                 'purchases' => $purchases,
-                'cashflows' => $cashFlows
+                'cashflows' => $cashFlows,
+                'total_amount' => $totalAmount
             ]);
             
         } catch (\Exception $e) {
-            \Log::error('Erro ao salvar compra', ['error' => $e->getMessage()]);
+            \Log::error('Erro ao salvar compra', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             
             return response()->json([
                 'success' => false,
-                'message' => 'Erro ao salvar compra: ' . $e->getMessage()
+                'message' => 'Erro ao salvar compra. Por favor, tente novamente.'
             ], 500);
         }
     }
@@ -468,8 +393,8 @@ class ProductController extends Controller
     public function destroyPurchase(Purchase $purchase)
     {
         try {
-            // Verificar se o usuário tem permissão
-            if ($purchase->user_id !== auth()->id()) {
+            // Verificar autorização usando Policy
+            if ($purchase->user_id !== Auth::id()) {
                 if (request()->expectsJson()) {
                     return response()->json([
                         'success' => false,
@@ -482,12 +407,8 @@ class ProductController extends Controller
             // Excluir o cashflow associado se existir
             if ($purchase->cashflow_id) {
                 $cashFlow = CashFlow::find($purchase->cashflow_id);
-                if ($cashFlow) {
+                if ($cashFlow && $cashFlow->user_id === Auth::id()) {
                     $cashFlow->delete();
-                    \Log::info('Cashflow excluído junto com purchase', [
-                        'cashflow_id' => $purchase->cashflow_id,
-                        'purchase_id' => $purchase->id
-                    ]);
                 }
             }
 
@@ -495,10 +416,8 @@ class ProductController extends Controller
             $productId = $purchase->product_id;
             $purchase->delete();
 
-            // Atualizar estatísticas do produto
-            $this->updateProductStats([$productId]);
-
-            \Log::info('Compra excluída com sucesso', ['purchase_id' => $purchase->id]);
+            // Atualizar estatísticas do produto usando Service
+            $this->statsService->updateProductStats([$productId]);
 
             if (request()->expectsJson()) {
                 return response()->json([
@@ -509,41 +428,19 @@ class ProductController extends Controller
 
             return redirect()->back()->with('success', 'Compra excluída com sucesso');
         } catch (\Exception $e) {
-            \Log::error('Erro ao excluir compra', ['error' => $e->getMessage()]);
+            \Log::error('Erro ao excluir compra', [
+                'error' => $e->getMessage(),
+                'purchase_id' => $purchase->id ?? null
+            ]);
 
             if (request()->expectsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Erro ao excluir compra: ' . $e->getMessage()
+                    'message' => 'Erro ao excluir compra. Por favor, tente novamente.'
                 ], 500);
             }
 
             return redirect()->back()->with('error', 'Erro ao excluir compra');
-        }
-    }
-
-    /**
-     * Atualizar estatísticas dos produtos em lote
-     */
-    private function updateProductStats($productIds)
-    {
-        foreach ($productIds as $productId) {
-            $stats = DB::table('purchases')
-                ->where('product_id', $productId)
-                ->selectRaw('
-                    AVG(price) as avg_price,
-                    SUM(total_value) as total_spent,
-                    COUNT(*) as purchase_count,
-                    MAX(price) as last_price
-                ')
-                ->first();
-            
-            Product::where('id', $productId)->update([
-                'average_price' => $stats->avg_price ?? 0,
-                'total_spent' => $stats->total_spent ?? 0,
-                'purchase_count' => $stats->purchase_count ?? 0,
-                'last_price' => $stats->last_price ?? 0,
-            ]);
         }
     }
 }

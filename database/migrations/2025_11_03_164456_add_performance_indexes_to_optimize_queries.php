@@ -11,8 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('optimize_queries', function (Blueprint $table) {
-            //
+        // Adicionar índice composto para otimizar queries de estatísticas mensais
+        Schema::table('purchases', function (Blueprint $table) {
+            // Índice composto para queries que filtram por product_id e data (para estatísticas mensais)
+            if (!Schema::hasIndex('purchases', 'purchases_product_date_index')) {
+                $table->index(['product_id', 'purchase_date'], 'purchases_product_date_index');
+            }
+        });
+
+        // Adicionar índice na coluna category da tabela products para otimizar filtros
+        Schema::table('products', function (Blueprint $table) {
+            if (!Schema::hasIndex('products', 'products_category_index')) {
+                $table->index('category', 'products_category_index');
+            }
         });
     }
 
@@ -21,8 +32,16 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('optimize_queries', function (Blueprint $table) {
-            //
+        Schema::table('purchases', function (Blueprint $table) {
+            if (Schema::hasIndex('purchases', 'purchases_product_date_index')) {
+                $table->dropIndex('purchases_product_date_index');
+            }
+        });
+
+        Schema::table('products', function (Blueprint $table) {
+            if (Schema::hasIndex('products', 'products_category_index')) {
+                $table->dropIndex('products_category_index');
+            }
         });
     }
 };

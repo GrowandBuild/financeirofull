@@ -16,6 +16,7 @@ class FinancialSchedule extends Model
         'category_id',
         'goal_category',
         'scheduled_date',
+        'end_date',
         'image_path',
         'is_confirmed',
         'confirmed_at',
@@ -29,6 +30,7 @@ class FinancialSchedule extends Model
     protected $casts = [
         'amount' => 'decimal:2',
         'scheduled_date' => 'date',
+        'end_date' => 'date',
         'is_confirmed' => 'boolean',
         'confirmed_at' => 'datetime',
         'is_recurring' => 'boolean',

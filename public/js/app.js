@@ -26,98 +26,6 @@ const PerformanceMonitor = {
     }
 };
 
-// Service Worker Manager
-const ServiceWorkerManager = {
-    async register() {
-        if ('serviceWorker' in navigator) {
-            try {
-                const registration = await navigator.serviceWorker.register('/sw.js?v=5');
-                console.log('Service Worker registrado:', registration.scope);
-                
-                // Escutar mensagens do Service Worker
-                navigator.serviceWorker.addEventListener('message', (event) => {
-                    if (event.data && event.data.type === 'SW_UPDATED') {
-                        console.log('Service Worker atualizado para:', event.data.version);
-                        this.forceReloadAssets();
-                    }
-                });
-                
-                // Verificar atualizações imediatamente
-                if (registration.waiting) {
-                    // Service Worker já está aguardando atualização
-                    console.log('Service Worker aguardando atualização, forçando ativação...');
-                    registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-                }
-                
-                // Verificar se há nova versão disponível
-                registration.addEventListener('updatefound', () => {
-                    const newWorker = registration.installing;
-                    newWorker.addEventListener('statechange', () => {
-                        if (newWorker.state === 'installed') {
-                            if (navigator.serviceWorker.controller) {
-                                // Há uma nova versão, mas ainda não está ativa
-                                console.log('Nova versão do Service Worker instalada!');
-                                // Forçar ativação imediata
-                                newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                // Recarregar após ativação
-                                newWorker.addEventListener('statechange', () => {
-                                    if (newWorker.state === 'activated') {
-                                        console.log('Service Worker ativado, recarregando página...');
-                                        window.location.reload();
-                                    }
-                                });
-                            } else {
-                                // Primeira instalação
-                                console.log('Service Worker instalado pela primeira vez!');
-                            }
-                        }
-                    });
-                });
-                
-                // Verificar periodicamente por atualizações
-                setInterval(() => {
-                    registration.update();
-                }, 60000); // A cada 1 minuto
-                
-                return registration;
-            } catch (error) {
-                console.error('Erro ao registrar Service Worker:', error);
-            }
-        }
-    },
-    
-    forceReloadAssets() {
-        // Forçar recarregamento do CSS
-        const cssLink = document.getElementById('main-css') || document.querySelector('link[href*="app.css"]');
-        if (cssLink) {
-            const href = cssLink.href.split('?')[0];
-            const timestamp = new Date().getTime();
-            cssLink.href = `${href}?v=${timestamp}`;
-            console.log('CSS recarregado:', cssLink.href);
-        }
-        
-        // Limpar cache de CSS/JS no Service Worker
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-                type: 'CLEAR_ASSET_CACHE'
-            });
-        }
-    },
-    
-    showUpdateNotification() {
-        // Forçar atualização automaticamente
-        console.log('Atualizando Service Worker automaticamente...');
-        if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
-            // Recarregar após um pequeno delay
-            setTimeout(() => {
-                window.location.reload();
-            }, 500);
-        }
-    }
-};
-
-
 // Search Manager
 const SearchManager = {
     debounceTimer: null,
@@ -181,6 +89,7 @@ const SearchManager = {
 // Image Lazy Loading
 const LazyImageLoader = {
     observer: null,
+    defaultImage: '/images/no-image.png',
     
     init() {
         if ('IntersectionObserver' in window) {
@@ -201,10 +110,34 @@ const LazyImageLoader = {
     
     observeImages() {
         const images = document.querySelectorAll('img[data-src]');
-        images.forEach(img => this.observer.observe(img));
+        images.forEach(img => {
+            // Adicionar tratamento de erro se ainda não existir
+            if (!img.hasAttribute('data-error-handled')) {
+                img.setAttribute('data-error-handled', 'true');
+                img.addEventListener('error', function() {
+                    // Se a imagem falhar ao carregar, usar imagem padrão
+                    const defaultImg = this.getAttribute('data-default') || this.closest('.lazy-image-container')?.querySelector('img[data-src]')?.getAttribute('data-default') || LazyImageLoader.defaultImage;
+                    if (this.src !== defaultImg && !this.src.includes('no-image')) {
+                        this.src = defaultImg;
+                    }
+                }, { once: true });
+            }
+            this.observer.observe(img);
+        });
     },
     
     loadImage(img) {
+        if (!img.dataset.src) {
+            return;
+        }
+        
+        // Verificar se a imagem já foi carregada
+        if (img.src && img.src !== this.defaultImage && img.src !== img.dataset.src) {
+            this.observer.unobserve(img);
+            return;
+        }
+        
+        // Carregar a imagem do data-src
         img.src = img.dataset.src;
         img.classList.remove('lazy');
         this.observer.unobserve(img);
@@ -331,22 +264,51 @@ const PerformanceOptimizer = {
     optimizeImages() {
         // Converter imagens para WebP se suportado
         if (this.supportsWebP()) {
-            const images = document.querySelectorAll('img[src$=".jpg"], img[src$=".png"]');
+            // Apenas processar imagens já carregadas (com src definido, não data-src)
+            const images = document.querySelectorAll('img[src]:not([src=""]):not([src*="no-image"])');
             images.forEach(img => {
-                // Ignorar placeholder no-image para evitar erro 404
-                if (img.src.includes('no-image')) {
+                // Ignorar imagens com data-src (lazy loading) - elas serão processadas quando carregadas
+                if (img.hasAttribute('data-src')) {
                     return;
                 }
                 
-                const webpSrc = img.src.replace(/\.(jpg|png)$/, '.webp');
+                // Ignorar placeholder no-image para evitar erro 404
+                if (img.src.includes('no-image') || img.src.includes('placeholder')) {
+                    return;
+                }
+                
+                // Verificar se já é WebP
+                if (img.src.includes('.webp')) {
+                    return;
+                }
+                
+                // Apenas tentar converter se tiver extensão jpg ou png
+                const hasValidExtension = /\.(jpg|jpeg|png)$/i.test(img.src);
+                if (!hasValidExtension) {
+                    return;
+                }
+                
+                // Tentar carregar WebP de forma silenciosa (sem requisições 404 no console)
+                const webpSrc = img.src.replace(/\.(jpg|jpeg|png)$/i, '.webp');
+                
+                // Usar fetch com mode 'no-cors' para evitar erros no console
+                // Mas isso não permite verificar se existe, então usamos Image com tratamento de erro
                 const webpImg = new Image();
+                
+                // Configurar tratamento de erro silencioso
                 webpImg.onload = () => {
-                    img.src = webpSrc;
+                    // Só trocar se o WebP foi carregado com sucesso
+                    if (webpImg.complete && webpImg.naturalWidth > 0) {
+                        img.src = webpSrc;
+                    }
                 };
+                
                 webpImg.onerror = () => {
-                    // Se WebP não existir, manter imagem original (silenciosamente)
-                    // Não fazer nada, apenas não converter
+                    // WebP não existe - manter imagem original silenciosamente
+                    // Não fazer nada para evitar logs de erro desnecessários
                 };
+                
+                // Carregar WebP de forma assíncrona
                 webpImg.src = webpSrc;
             });
         }
@@ -507,11 +469,8 @@ const App = {
         SearchManager.init();
         LazyImageLoader.init();
         ErrorHandler.init();
-        PerformanceOptimizer.init(); // Reativado, mas navegação AJAX está desabilitada
+        PerformanceOptimizer.init();
         HamburgerMenuManager.init();
-        
-        // Service Worker completamente desabilitado - estava causando problemas
-        // ServiceWorkerManager.register(); // DESABILITADO
         
         // Animar elementos na página
         this.animatePageElements();
@@ -551,13 +510,6 @@ function forceReloadCSS() {
                     const href = cssLink.href.split('?')[0];
                     const timestamp = new Date().getTime();
                     cssLink.href = `${href}?v=${timestamp}`;
-                    
-                    // Também limpar cache no Service Worker
-                    if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-                        navigator.serviceWorker.controller.postMessage({
-                            type: 'CLEAR_ASSET_CACHE'
-                        });
-                    }
                 }
             }
         }, 1500);
@@ -576,29 +528,37 @@ if (document.readyState === 'loading') {
 }
 
 // Cache Simple Functions
-function clearAllCachesSimple() {
-    if (confirm('Tem certeza que deseja limpar todos os caches?')) {
-        try {
-            // Limpar localStorage
-            localStorage.clear();
-            
-            // Limpar caches do Service Worker
-            if ('caches' in window) {
-                caches.keys().then(names => {
-                    names.forEach(name => {
-                        caches.delete(name);
+async function clearAllCachesSimple() {
+    if (typeof window.confirmAction === 'function') {
+        const confirmed = await window.confirmAction(
+            'Tem certeza que deseja limpar todos os caches?',
+            'Limpar Caches'
+        );
+        if (confirmed) {
+            try {
+                // Limpar localStorage
+                localStorage.clear();
+                
+                // Limpar caches
+                if ('caches' in window) {
+                    caches.keys().then(names => {
+                        names.forEach(name => caches.delete(name));
                     });
-                });
+                }
+                
+                // Limpar sessionStorage
+                sessionStorage.clear();
+                
+                if (typeof window.showSuccess === 'function') {
+                    window.showSuccess('Todos os caches foram limpos com sucesso!');
+                }
+                window.location.reload();
+            } catch (error) {
+                console.error('Erro ao limpar caches:', error);
+                if (typeof window.showError === 'function') {
+                    window.showError('Erro ao limpar caches. Por favor, tente novamente.');
+                }
             }
-            
-            // Limpar sessionStorage
-            sessionStorage.clear();
-            
-            alert('Todos os caches foram limpos com sucesso!');
-            window.location.reload();
-        } catch (error) {
-            console.error('Erro ao limpar caches:', error);
-            alert('Erro ao limpar caches. Por favor, tente novamente.');
         }
     }
 }
@@ -658,11 +618,14 @@ const HamburgerMenuManager = {
         const overlay = document.getElementById('hamburgerOverlay');
         
         if (menu && panel && overlay) {
-            menu.classList.add('active');
-            panel.classList.add('active');
-            overlay.classList.add('active');
-            document.body.style.overflow = 'hidden';
-            this.isOpen = true;
+            // Usar requestAnimationFrame para melhor performance
+            requestAnimationFrame(() => {
+                menu.classList.add('active');
+                panel.classList.add('active');
+                overlay.classList.add('active');
+                document.body.style.overflow = 'hidden';
+                this.isOpen = true;
+            });
         }
     },
     
@@ -672,11 +635,14 @@ const HamburgerMenuManager = {
         const overlay = document.getElementById('hamburgerOverlay');
         
         if (menu && panel && overlay) {
-            menu.classList.remove('active');
-            panel.classList.remove('active');
-            overlay.classList.remove('active');
-            document.body.style.overflow = '';
-            this.isOpen = false;
+            // Usar requestAnimationFrame para melhor performance
+            requestAnimationFrame(() => {
+                menu.classList.remove('active');
+                panel.classList.remove('active');
+                overlay.classList.remove('active');
+                document.body.style.overflow = '';
+                this.isOpen = false;
+            });
         }
     }
 };
@@ -686,7 +652,7 @@ function toggleHamburgerMenu() {
     HamburgerMenuManager.toggle();
 }
 
-// Exportar para uso global se necessário
+// Exportar para uso global
 window.MeusProdutos = {
     App,
     CacheManager,
@@ -696,7 +662,7 @@ window.MeusProdutos = {
     clearAllCachesSimple,
     toggleDevModeSimple,
     toggleHamburgerMenu,
-    FinanceQuotesManager: null // Será definido abaixo
+    FinanceQuotesManager: null
 };
 
 // Inicializar menu hambúrguer

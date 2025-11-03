@@ -39,7 +39,12 @@ class FinancialScheduleController extends Controller
         // Contar notificações (vencimentos próximos)
         $notificationCount = $this->getNotificationCount($user->id);
         
-        return view('financial-schedule.index', compact('incomes', 'expenses', 'month', 'year', 'notificationCount'));
+        // Calcular balanço (total entradas - total saídas)
+        $totalIncomes = $incomes->sum('amount');
+        $totalExpenses = $expenses->sum('amount');
+        $balance = $totalIncomes - $totalExpenses;
+        
+        return view('financial-schedule.index', compact('incomes', 'expenses', 'month', 'year', 'notificationCount', 'totalIncomes', 'totalExpenses', 'balance'));
     }
     
     public function create()
@@ -81,6 +86,7 @@ class FinancialScheduleController extends Controller
             'goal_category' => 'nullable|in:fixed_expenses,professional_resources,emergency_reserves,leisure,debt_installments',
             'scheduled_date' => 'nullable|date',
             'scheduled_day' => 'nullable|integer|min:1|max:31',
+            'end_date' => 'nullable|date',
             'image' => 'nullable|image|max:2048',
             'recurring_frequency' => 'nullable|in:daily,weekly,biweekly,monthly,quarterly,semiannual,yearly'
         ]);
@@ -88,6 +94,13 @@ class FinancialScheduleController extends Controller
         // Validar que pelo menos uma das datas foi preenchida
         if (!$request->filled('scheduled_date') && !$request->filled('scheduled_day')) {
             return back()->withErrors(['scheduled_date' => 'Você deve preencher uma das datas.'])->withInput();
+        }
+        
+        // Validar que end_date seja após scheduled_date se ambos estiverem preenchidos
+        if ($request->filled('end_date') && $request->filled('scheduled_date')) {
+            if (strtotime($request->input('end_date')) < strtotime($request->input('scheduled_date'))) {
+                return back()->withErrors(['end_date' => 'A data de término deve ser igual ou posterior à data agendada.'])->withInput();
+            }
         }
         
         $data = $request->all();
@@ -148,6 +161,7 @@ class FinancialScheduleController extends Controller
             'goal_category' => 'nullable|in:fixed_expenses,professional_resources,emergency_reserves,leisure,debt_installments',
             'scheduled_date' => 'nullable|date',
             'scheduled_day' => 'nullable|integer|min:1|max:31',
+            'end_date' => 'nullable|date',
             'image' => 'nullable|image|max:2048',
             'recurring_frequency' => 'nullable|in:daily,weekly,biweekly,monthly,quarterly,semiannual,yearly'
         ]);
@@ -155,6 +169,13 @@ class FinancialScheduleController extends Controller
         // Validar que pelo menos uma das datas foi preenchida
         if (!$request->filled('scheduled_date') && !$request->filled('scheduled_day')) {
             return back()->withErrors(['scheduled_date' => 'Você deve preencher uma das datas.'])->withInput();
+        }
+        
+        // Validar que end_date seja após scheduled_date se ambos estiverem preenchidos
+        if ($request->filled('end_date') && $request->filled('scheduled_date')) {
+            if (strtotime($request->input('end_date')) < strtotime($request->input('scheduled_date'))) {
+                return back()->withErrors(['end_date' => 'A data de término deve ser igual ou posterior à data agendada.'])->withInput();
+            }
         }
         
         $user = Auth::user();

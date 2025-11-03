@@ -137,6 +137,23 @@
                     </select>
                 </div>
 
+                <!-- Data de Término (apenas para despesas fixas recorrentes) -->
+                <div class="mb-3" id="end_date_wrapper" style="display: none;">
+                    <label for="end_date" class="form-label" style="color: rgba(255,255,255,0.9); margin-bottom: 8px;">
+                        <i class="bi bi-calendar-x"></i> Data de Término (opcional)
+                    </label>
+                    <input type="date" 
+                           name="end_date" 
+                           id="end_date" 
+                           value="{{ old('end_date', $schedule->end_date ? $schedule->end_date->format('Y-m-d') : '') }}"
+                           class="form-control"
+                           style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; border-radius: 8px; padding: 12px;">
+                    <small class="text-white-50">Defina até quando essa despesa fixa será recorrente. Se não preencher, será infinita.</small>
+                    @error('end_date')
+                        <p class="text-danger text-sm">{{ $message }}</p>
+                    @enderror
+                </div>
+
                 <div class="row">
                     <!-- Data Fixa (Pagamento Único) -->
                     <div class="col-md-6 mb-3">
@@ -335,6 +352,20 @@
         const typeSelect = document.getElementById('type');
         const goalCategoryWrapper = document.getElementById('goal_category_wrapper');
         const goalCategory = document.getElementById('goal_category');
+        const endDateWrapper = document.getElementById('end_date_wrapper');
+        
+        // Função para atualizar visibilidade do end_date
+        function updateEndDateVisibility() {
+            const isExpense = typeSelect.value === 'expense';
+            const isFixedExpense = goalCategory.value === 'fixed_expenses';
+            const isRecurring = dayInput.value !== '' || document.getElementById('recurring_frequency_wrapper').style.display !== 'none';
+            
+            if (isExpense && isFixedExpense && isRecurring) {
+                endDateWrapper.style.display = 'block';
+            } else {
+                endDateWrapper.style.display = 'none';
+            }
+        }
         
         typeSelect.addEventListener('change', function() {
             if (this.value === 'expense') {
@@ -344,11 +375,22 @@
                 goalCategoryWrapper.style.display = 'none';
                 goalCategory.required = false;
                 goalCategory.value = '';
+                endDateWrapper.style.display = 'none';
             }
+            updateEndDateVisibility();
+        });
+        
+        goalCategory.addEventListener('change', function() {
+            updateEndDateVisibility();
         });
         
         // Trigger inicial
         typeSelect.dispatchEvent(new Event('change'));
+        
+        // Verificar condições iniciais para mostrar end_date
+        @if($schedule->type === 'expense' && $schedule->goal_category === 'fixed_expenses' && $schedule->is_recurring)
+            endDateWrapper.style.display = 'block';
+        @endif
         
         // Função para atualizar visibilidade
         function updateVisibility() {
@@ -375,6 +417,7 @@
                 dateInput.disabled = false;
                 wrapper.style.display = 'none';
             }
+            updateEndDateVisibility();
         }
         
         // Quando preencher data fixa (única)
