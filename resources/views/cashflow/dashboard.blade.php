@@ -66,7 +66,7 @@
                     <i class="bi bi-graph-up me-2"></i>
                     Evolução dos Últimos 6 Meses
                 </h5>
-                <canvas id="cashFlowChart" height="300"></canvas>
+                <canvas id="cashFlowChart" height="200"></canvas>
             </div>
         </div>
         <div class="col-lg-4 mb-4">
@@ -136,7 +136,7 @@
 
 @push('scripts')
 <script>
-    // Gráfico de Evolução
+    // Gráfico de Evolução - Versão Simplificada
     const ctx = document.getElementById('cashFlowChart').getContext('2d');
     const chartData = @json($chartData);
     
@@ -150,7 +150,7 @@
                     data: chartData.map(item => item.income),
                     borderColor: '#10b981',
                     backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    tension: 0.4,
+                    borderWidth: 2,
                     fill: true
                 },
                 {
@@ -158,49 +158,63 @@
                     data: chartData.map(item => item.expense),
                     borderColor: '#ef4444',
                     backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                    tension: 0.4,
+                    borderWidth: 2,
                     fill: true
-                },
-                {
-                    label: 'Saldo',
-                    data: chartData.map(item => item.balance),
-                    borderColor: '#fbbf24',
-                    backgroundColor: 'rgba(251, 191, 36, 0.1)',
-                    tension: 0.4,
-                    fill: false
                 }
             ]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: true,
             plugins: {
                 legend: {
+                    position: 'top',
                     labels: {
-                        color: 'white'
+                        color: 'white',
+                        boxWidth: 12,
+                        padding: 10
                     }
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    padding: 10,
+                    titleColor: 'white',
+                    bodyColor: 'white',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1
                 }
             },
             scales: {
                 x: {
                     ticks: {
-                        color: 'rgba(255, 255, 255, 0.7)'
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        font: { size: 11 }
                     },
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
+                        color: 'rgba(255, 255, 255, 0.05)',
+                        drawBorder: false
                     }
                 },
                 y: {
                     ticks: {
                         color: 'rgba(255, 255, 255, 0.7)',
+                        font: { size: 11 },
                         callback: function(value) {
+                            if (value >= 1000) {
+                                return 'R$ ' + (value / 1000).toFixed(1) + 'k';
+                            }
                             return 'R$ ' + value.toLocaleString('pt-BR');
                         }
                     },
                     grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
+                        color: 'rgba(255, 255, 255, 0.05)',
+                        drawBorder: false
                     }
                 }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index'
             }
         }
     });
