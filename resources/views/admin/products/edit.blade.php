@@ -112,6 +112,7 @@
                             <option value="L" {{ old('unit', $product->unit) == 'L' ? 'selected' : '' }}>L - Litro</option>
                             <option value="ml" {{ old('unit', $product->unit) == 'ml' ? 'selected' : '' }}>ml - Mililitro</option>
                             <option value="un" {{ old('unit', $product->unit) == 'un' ? 'selected' : '' }}>un - Unidade</option>
+                            <option value="pct" {{ old('unit', $product->unit) == 'pct' ? 'selected' : '' }}>pct - Pacote</option>
                             <option value="dz" {{ old('unit', $product->unit) == 'dz' ? 'selected' : '' }}>dz - Dúzia</option>
                             <option value="cx" {{ old('unit', $product->unit) == 'cx' ? 'selected' : '' }}>cx - Caixa</option>
                         </select>
@@ -257,6 +258,7 @@
                                     <option value="L" {{ old('variants.'.$index.'.unit', $variant['unit']) == 'L' ? 'selected' : '' }}>L</option>
                                     <option value="ml" {{ old('variants.'.$index.'.unit', $variant['unit']) == 'ml' ? 'selected' : '' }}>ml</option>
                                     <option value="un" {{ old('variants.'.$index.'.unit', $variant['unit']) == 'un' ? 'selected' : '' }}>un</option>
+                                    <option value="pct" {{ old('variants.'.$index.'.unit', $variant['unit']) == 'pct' ? 'selected' : '' }}>pct</option>
                                     <option value="dz" {{ old('variants.'.$index.'.unit', $variant['unit']) == 'dz' ? 'selected' : '' }}>dz</option>
                                     <option value="cx" {{ old('variants.'.$index.'.unit', $variant['unit']) == 'cx' ? 'selected' : '' }}>cx</option>
                                 </select>
@@ -303,6 +305,7 @@
                                     <option value="L">L</option>
                                     <option value="ml">ml</option>
                                     <option value="un">un</option>
+                                    <option value="pct">pct</option>
                                     <option value="dz">dz</option>
                                     <option value="cx">cx</option>
                                 </select>

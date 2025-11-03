@@ -111,6 +111,7 @@
                             <option value="L" {{ old('unit') == 'L' ? 'selected' : '' }}>L - Litro</option>
                             <option value="ml" {{ old('unit') == 'ml' ? 'selected' : '' }}>ml - Mililitro</option>
                             <option value="un" {{ old('unit') == 'un' ? 'selected' : '' }}>un - Unidade</option>
+                            <option value="pct" {{ old('unit') == 'pct' ? 'selected' : '' }}>pct - Pacote</option>
                             <option value="dz" {{ old('unit') == 'dz' ? 'selected' : '' }}>dz - Dúzia</option>
                             <option value="cx" {{ old('unit') == 'cx' ? 'selected' : '' }}>cx - Caixa</option>
                         </select>
@@ -237,6 +238,7 @@
                                     <option value="L">L</option>
                                     <option value="ml">ml</option>
                                     <option value="un">un</option>
+                                    <option value="pct">pct</option>
                                     <option value="dz">dz</option>
                                     <option value="cx">cx</option>
                                 </select>
