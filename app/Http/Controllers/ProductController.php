@@ -13,15 +13,7 @@ class ProductController extends Controller
 {
     public function index()
     {
-        $products = Product::select([
-            'id', 'name', 'category', 'unit', 'description', 
-            'image', 'image_path', 'variants', 'has_variants',
-            'average_price', 'last_price', 'total_spent', 'purchase_count'
-        ])
-        ->withCount('purchases')
-        ->get();
-
-        // Calcular estatísticas em uma única consulta
+        // Calcular estatísticas em uma única consulta para todos os produtos
         $monthlyStats = DB::table('purchases')
             ->select('product_id')
             ->selectRaw('SUM(total_value) as monthly_spend')
@@ -30,16 +22,32 @@ class ProductController extends Controller
             ->groupBy('product_id')
             ->pluck('monthly_spend', 'product_id');
 
+        // Top produtos usando dados já calculados
+        $topProducts = Product::select(['id', 'name', 'category'])
+            ->get()
+            ->map(function ($product) use ($monthlyStats) {
+                $product->monthly_spend = $monthlyStats[$product->id] ?? 0;
+                return $product;
+            })
+            ->sortByDesc('monthly_spend')
+            ->take(2);
+
+        // Paginação de produtos
+        $products = Product::select([
+            'id', 'name', 'category', 'unit', 'description', 
+            'image', 'image_path', 'variants', 'has_variants',
+            'average_price', 'last_price', 'total_spent', 'purchase_count'
+        ])
+        ->withCount('purchases')
+        ->paginate(12);
+
         // Aplicar estatísticas calculadas
         $products->each(function ($product) use ($monthlyStats) {
             $product->monthly_spend = $monthlyStats[$product->id] ?? 0;
         });
-
-        // Top produtos usando dados já calculados
-        $topProducts = $products->sortByDesc('monthly_spend')->take(2);
         
         // Gasto total mensal
-        $totalMonthlySpend = $products->sum('monthly_spend');
+        $totalMonthlySpend = $monthlyStats->sum();
 
         return view('products.index', compact('products', 'topProducts', 'totalMonthlySpend'));
     }

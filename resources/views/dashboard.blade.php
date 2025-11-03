@@ -103,53 +103,51 @@
                 </h3>
             </div>
             
-            <div class="products-carousel-wrapper">
-                <div class="products-carousel">
-                    @forelse(\App\Models\Product::latest()->get() as $product)
-                        <a href="{{ route('admin.products.show', $product) }}" class="premium-product-card">
-                            <div class="premium-product-image">
-                                @if($product->image)
-                                    <img src="{{ $product->image }}" alt="{{ $product->name }}">
-                                    <div class="product-overlay">
-                                        <i class="bi bi-eye"></i>
-                                    </div>
-                                @else
-                                    <div class="product-icon">
-                                        <i class="bi bi-box"></i>
-                                    </div>
-                                @endif
-                            </div>
-                            <div class="premium-product-info">
-                                <div class="premium-product-name">{{ $product->name }}</div>
-                                <div class="premium-product-category">{{ $product->category }} • {{ $product->unit }}</div>
-                                @if($product->last_price > 0)
-                                    <div class="premium-product-price">
-                                        R$ {{ number_format($product->last_price, 2, ',', '.') }}
-                                    </div>
-                                @endif
-                                @if($product->has_variants)
-                                    <div class="category-badge">Variantes</div>
-                                @endif
-                            </div>
-                        </a>
-                    @empty
-                        <div class="premium-empty-state">
-                            <div class="empty-icon">
-                                <i class="bi bi-box"></i>
-                            </div>
-                            <div class="empty-title">Nenhum produto encontrado</div>
-                            <div class="empty-description">
-                                Comece adicionando seu primeiro produto para gerenciar suas compras.
-                            </div>
-                            <div class="empty-actions">
-                                <a href="{{ route('admin.products.create') }}" class="premium-btn primary">
-                                    <i class="bi bi-plus"></i>
-                                    Adicionar Produto
-                                </a>
-                            </div>
+            <div class="premium-product-grid">
+                @forelse(\App\Models\Product::latest()->take(6)->get() as $product)
+                    <a href="{{ route('admin.products.show', $product) }}" class="premium-product-card">
+                        <div class="premium-product-image">
+                            @if($product->image)
+                                <img src="{{ $product->image }}" alt="{{ $product->name }}">
+                                <div class="product-overlay">
+                                    <i class="bi bi-eye"></i>
+                                </div>
+                            @else
+                                <div class="product-icon">
+                                    <i class="bi bi-box"></i>
+                                </div>
+                            @endif
                         </div>
-                    @endforelse
-                </div>
+                        <div class="premium-product-info">
+                            <div class="premium-product-name">{{ $product->name }}</div>
+                            <div class="premium-product-category">{{ $product->category }} • {{ $product->unit }}</div>
+                            @if($product->last_price > 0)
+                                <div class="premium-product-price">
+                                    R$ {{ number_format($product->last_price, 2, ',', '.') }}
+                                </div>
+                            @endif
+                            @if($product->has_variants)
+                                <div class="category-badge">Variantes</div>
+                            @endif
+                        </div>
+                    </a>
+                @empty
+                    <div class="premium-empty-state">
+                        <div class="empty-icon">
+                            <i class="bi bi-box"></i>
+                        </div>
+                        <div class="empty-title">Nenhum produto encontrado</div>
+                        <div class="empty-description">
+                            Comece adicionando seu primeiro produto para gerenciar suas compras.
+                        </div>
+                        <div class="empty-actions">
+                            <a href="{{ route('admin.products.create') }}" class="premium-btn primary">
+                                <i class="bi bi-plus"></i>
+                                Adicionar Produto
+                            </a>
+                        </div>
+                    </div>
+                @endforelse
             </div>
         </div>
 
@@ -434,78 +432,6 @@
     }
 }
 
-/* Carousel Styles */
-.products-carousel-wrapper {
-    position: relative;
-    width: 100%;
-    overflow: hidden;
-    margin-bottom: 1rem;
-}
 
-.products-carousel {
-    display: flex;
-    gap: 0.75rem;
-    overflow-x: auto;
-    overflow-y: hidden;
-    scroll-behavior: smooth;
-    padding-bottom: 0.5rem;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
-}
-
-/* Custom Scrollbar */
-.products-carousel::-webkit-scrollbar {
-    height: 6px;
-}
-
-.products-carousel::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-}
-
-.products-carousel::-webkit-scrollbar-thumb {
-    background: rgba(16, 185, 129, 0.5);
-    border-radius: 10px;
-}
-
-.products-carousel::-webkit-scrollbar-thumb:hover {
-    background: rgba(16, 185, 129, 0.7);
-}
-
-/* Cards no carrossel */
-.products-carousel .premium-product-card {
-    flex: 0 0 calc(50% - 0.375rem);
-    min-width: 280px;
-    max-width: 100%;
-}
-
-/* Mobile adjustments */
-@media (max-width: 575px) {
-    .products-carousel {
-        gap: 0.5rem;
-    }
-    
-    .products-carousel .premium-product-card {
-        flex: 0 0 calc(50% - 0.25rem);
-        min-width: 260px;
-    }
-}
-
-/* Tablet adjustments */
-@media (min-width: 576px) and (max-width: 768px) {
-    .products-carousel .premium-product-card {
-        flex: 0 0 calc(50% - 0.5rem);
-        min-width: 270px;
-    }
-}
-
-/* Desktop adjustments */
-@media (min-width: 769px) {
-    .products-carousel .premium-product-card {
-        flex: 0 0 calc(33.333% - 0.6rem);
-        min-width: 300px;
-    }
-}
 </style>
 @endsection
