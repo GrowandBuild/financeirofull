@@ -22,6 +22,7 @@ Route::prefix('cashflow')->name('cashflow.')->middleware('auth')->group(function
     Route::get('/add', [\App\Http\Controllers\CashFlowController::class, 'add'])->name('add');
     Route::post('/store', [\App\Http\Controllers\CashFlowController::class, 'store'])->name('store');
     Route::get('/reports', [\App\Http\Controllers\CashFlowController::class, 'reports'])->name('reports');
+    Route::delete('/transactions/{cashflow}', [\App\Http\Controllers\CashFlowController::class, 'destroy'])->name('transactions.destroy');
 });
 
 // Rotas da Agenda Financeira

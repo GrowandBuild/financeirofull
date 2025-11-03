@@ -107,7 +107,8 @@ class CashFlowController extends Controller
             $query->where('transaction_date', '<=', $request->date_to);
         }
         
-        $transactions = $query->orderBy('transaction_date', 'desc')->paginate(20);
+        $perPage = $request->get('per_page', 10);
+        $transactions = $query->orderBy('transaction_date', 'desc')->paginate($perPage);
         $categories = Category::where('user_id', $user->id)->active()->get();
         
         return view('cashflow.transactions', compact('transactions', 'categories'));
@@ -260,5 +261,41 @@ class CashFlowController extends Controller
         $cashflow->delete();
         
         return response()->json(['message' => 'Transação deletada com sucesso']);
+    }
+    
+    public function destroy(CashFlow $cashflow)
+    {
+        try {
+            // Verificar se o usuário pode deletar esta transação
+            if ($cashflow->user_id !== Auth::id()) {
+                if (request()->expectsJson()) {
+                    return response()->json(['error' => 'Não autorizado'], 403);
+                }
+                return redirect()->back()->with('error', 'Você não tem permissão para excluir esta transação');
+            }
+
+            // Excluir a transação
+            $cashflow->delete();
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Transação excluída com sucesso'
+                ]);
+            }
+
+            return redirect()->back()->with('success', 'Transação excluída com sucesso');
+        } catch (\Exception $e) {
+            \Log::error('Erro ao excluir transação', ['error' => $e->getMessage()]);
+
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erro ao excluir transação: ' . $e->getMessage()
+                ], 500);
+            }
+
+            return redirect()->back()->with('error', 'Erro ao excluir transação');
+        }
     }
 }
