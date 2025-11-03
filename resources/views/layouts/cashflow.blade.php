@@ -46,7 +46,8 @@
         
         .cashflow-container {
             background: linear-gradient(135deg, #1e3a8a, #1e40af, #3b82f6);
-            padding: 0 0.75rem;
+            padding: 0 0.75rem 80px;
+            min-height: 100vh;
         }
         
         /* Compactar cards de resumo para 2 colunas em mobile */
@@ -124,13 +125,31 @@
         }
         
         .bottom-nav-cashflow {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
             background: rgba(30, 58, 138, 0.95) !important;
+            backdrop-filter: blur(10px);
+            padding: 0.5rem 0.5rem !important;
+            z-index: 1000 !important;
+            border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+            box-sizing: border-box !important;
         }
         
         .nav-item-cashflow {
             text-decoration: none;
             color: white;
             transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.625rem;
+            padding: 0.25rem;
+            min-height: 60px;
         }
         
         .nav-item-cashflow:hover {
@@ -151,7 +170,80 @@
         .nav-icon-cashflow {
             background: rgba(255, 255, 255, 0.2);
             border-radius: 0.5rem;
+            padding: 0.5rem;
+            margin-bottom: 0.25rem;
+            width: 2rem;
+            height: 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.875rem;
             transition: all 0.3s ease;
+        }
+        
+        /* Responsive bottom nav */
+        @media (max-width: 575px) {
+            .bottom-nav-cashflow {
+                padding: 0.5rem 0.25rem !important;
+            }
+            
+            .nav-item-cashflow {
+                font-size: 0.5rem;
+                min-height: 55px;
+                padding: 0.125rem;
+            }
+            
+            .nav-icon-cashflow {
+                width: 1.75rem;
+                height: 1.75rem;
+                font-size: 0.75rem;
+                padding: 0.375rem;
+                margin-bottom: 0.125rem;
+            }
+        }
+        
+        @media (min-width: 576px) {
+            .bottom-nav-cashflow {
+                padding: 0.5rem 2rem !important;
+            }
+        }
+        
+        @media (min-width: 768px) {
+            .bottom-nav-cashflow {
+                padding: 0.75rem 3rem !important;
+            }
+            
+            .nav-item-cashflow {
+                font-size: 0.75rem;
+            }
+            
+            .nav-icon-cashflow {
+                width: 2rem;
+                height: 2rem;
+                font-size: 1rem;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .bottom-nav-cashflow {
+                padding: 1rem 4rem !important;
+            }
+            
+            .nav-item-cashflow {
+                font-size: 0.875rem;
+            }
+            
+            .nav-icon-cashflow {
+                width: 2.25rem;
+                height: 2.25rem;
+                font-size: 1.125rem;
+            }
+        }
+        
+        @media (min-width: 1280px) {
+            .bottom-nav-cashflow {
+                padding: 1rem 6rem !important;
+            }
         }
     </style>
     </head>
@@ -276,42 +368,42 @@
     
     <div class="cashflow-container">
         @yield('content')
-        
-        <!-- Bottom Navigation -->
-        <div class="bottom-nav-cashflow">
-            <div class="row w-100">
-                <div class="col-3 text-center">
-                    <a href="{{ route('cashflow.dashboard') }}" class="nav-item-cashflow {{ request()->routeIs('cashflow.dashboard') ? 'active' : '' }}">
-                        <div class="nav-icon-cashflow">
-                            <i class="bi bi-speedometer2"></i>
-                        </div>
-                        <span>Dashboard</span>
-                    </a>
-                </div>
-                <div class="col-3 text-center">
-                    <a href="{{ route('cashflow.transactions') }}" class="nav-item-cashflow {{ request()->routeIs('cashflow.transactions') ? 'active' : '' }}">
-                        <div class="nav-icon-cashflow">
-                            <i class="bi bi-list-ul"></i>
-                        </div>
-                        <span>Transações</span>
-                    </a>
-                </div>
-                <div class="col-3 text-center">
-                    <a href="{{ route('cashflow.add') }}" class="nav-item-cashflow {{ request()->routeIs('cashflow.add') ? 'active' : '' }}">
-                        <div class="nav-icon-cashflow">
-                            <i class="bi bi-plus-circle"></i>
-                        </div>
-                        <span>Adicionar</span>
-                    </a>
-                </div>
-                <div class="col-3 text-center">
-                    <a href="{{ route('cashflow.reports') }}" class="nav-item-cashflow {{ request()->routeIs('cashflow.reports') ? 'active' : '' }}">
-                        <div class="nav-icon-cashflow">
-                            <i class="bi bi-graph-up"></i>
-                        </div>
-                        <span>Relatórios</span>
-                    </a>
-                </div>
+    </div>
+    
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav-cashflow">
+        <div class="row w-100">
+            <div class="col-3 text-center">
+                <a href="{{ route('cashflow.dashboard') }}" class="nav-item-cashflow {{ request()->routeIs('cashflow.dashboard') ? 'active' : '' }}">
+                    <div class="nav-icon-cashflow">
+                        <i class="bi bi-speedometer2"></i>
+                    </div>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            <div class="col-3 text-center">
+                <a href="{{ route('cashflow.transactions') }}" class="nav-item-cashflow {{ request()->routeIs('cashflow.transactions') ? 'active' : '' }}">
+                    <div class="nav-icon-cashflow">
+                        <i class="bi bi-list-ul"></i>
+                    </div>
+                    <span>Transações</span>
+                </a>
+            </div>
+            <div class="col-3 text-center">
+                <a href="{{ route('cashflow.add') }}" class="nav-item-cashflow {{ request()->routeIs('cashflow.add') ? 'active' : '' }}">
+                    <div class="nav-icon-cashflow">
+                        <i class="bi bi-plus-circle"></i>
+                    </div>
+                    <span>Adicionar</span>
+                </a>
+            </div>
+            <div class="col-3 text-center">
+                <a href="{{ route('cashflow.reports') }}" class="nav-item-cashflow {{ request()->routeIs('cashflow.reports') ? 'active' : '' }}">
+                    <div class="nav-icon-cashflow">
+                        <i class="bi bi-graph-up"></i>
+                    </div>
+                    <span>Relatórios</span>
+                </a>
             </div>
         </div>
     </div>
