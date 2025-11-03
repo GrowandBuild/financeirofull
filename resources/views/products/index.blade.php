@@ -88,56 +88,54 @@
             <i class="bi bi-grid-3x3-gap"></i>
             Todos os Produtos
         </h3>
-        <button class="view-all-btn">
-            <span>Ver todos</span>
-            <i class="bi bi-arrow-right"></i>
-        </button>
     </div>
     
-    <!-- Premium Product Grid -->
-    <div class="premium-product-grid">
-        @if($products && $products->count() > 0)
-            @foreach($products->take(6) as $product)
-                <div class="premium-product-card" onclick="viewProduct({{ $product->id }})">
-                    <div class="premium-product-image">
-                        <img data-src="{{ $product->image ?: '/alimentos/steaak.jpg' }}" 
-                             src="{{ asset('images/no-image.png') }}"
-                             alt="{{ $product->name }}" 
-                             class="img-fluid lazy"
-                             loading="lazy">
-                        <div class="product-overlay">
-                            <i class="bi bi-eye"></i>
+    <!-- Premium Product Carousel -->
+    <div class="products-carousel-wrapper">
+        <div class="products-carousel">
+            @if($products && $products->count() > 0)
+                @foreach($products as $product)
+                    <div class="premium-product-card" onclick="viewProduct({{ $product->id }})">
+                        <div class="premium-product-image">
+                            <img data-src="{{ $product->image ?: '/alimentos/steaak.jpg' }}" 
+                                 src="{{ asset('images/no-image.png') }}"
+                                 alt="{{ $product->name }}" 
+                                 class="img-fluid lazy"
+                                 loading="lazy">
+                            <div class="product-overlay">
+                                <i class="bi bi-eye"></i>
+                            </div>
+                        </div>
+                        <div class="premium-product-info">
+                            <h5 class="premium-product-name">{{ $product->name }}</h5>
+                            <div class="premium-product-category">{{ $product->category ?? 'Sem categoria' }}</div>
+                            <div class="premium-product-price">
+                                @if($product->monthly_spend > 0)
+                                    R$ {{ number_format($product->monthly_spend, 2, ',', '.') }}
+                                    <small class="text-white/60 text-xs block">Total do mês</small>
+                                @else
+                                    Sem gastos
+                                @endif
+                            </div>
                         </div>
                     </div>
-                    <div class="premium-product-info">
-                        <h5 class="premium-product-name">{{ $product->name }}</h5>
-                        <div class="premium-product-category">{{ $product->category ?? 'Sem categoria' }}</div>
-                        <div class="premium-product-price">
-                            @if($product->monthly_spend > 0)
-                                R$ {{ number_format($product->monthly_spend, 2, ',', '.') }}
-                                <small class="text-white/60 text-xs block">Total do mês</small>
-                            @else
-                                Sem gastos
-                            @endif
-                        </div>
+                @endforeach
+            @else
+                <div class="no-products-card">
+                    <div class="no-products-icon">
+                        <i class="bi bi-box"></i>
+                    </div>
+                    <div class="no-products-content">
+                        <h4>Nenhum produto cadastrado</h4>
+                        <p>Comece adicionando seus primeiros produtos</p>
+                        <a href="{{ route('admin.products.create') }}" class="premium-btn primary">
+                            <i class="bi bi-plus-lg"></i>
+                            Adicionar Produto
+                        </a>
                     </div>
                 </div>
-            @endforeach
-        @else
-            <div class="no-products-card">
-                <div class="no-products-icon">
-                    <i class="bi bi-box"></i>
-                </div>
-                <div class="no-products-content">
-                    <h4>Nenhum produto cadastrado</h4>
-                    <p>Comece adicionando seus primeiros produtos</p>
-                    <a href="{{ route('admin.products.create') }}" class="premium-btn primary">
-                        <i class="bi bi-plus-lg"></i>
-                        Adicionar Produto
-                    </a>
-                </div>
-            </div>
-        @endif
+            @endif
+        </div>
     </div>
 </div>
 
@@ -210,6 +208,79 @@
 
 .premium-btn i {
     font-size: 1rem;
+}
+
+/* Carousel Styles */
+.products-carousel-wrapper {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+
+.products-carousel {
+    display: flex;
+    gap: 0.75rem;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-behavior: smooth;
+    padding-bottom: 0.5rem;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Custom Scrollbar */
+.products-carousel::-webkit-scrollbar {
+    height: 6px;
+}
+
+.products-carousel::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+}
+
+.products-carousel::-webkit-scrollbar-thumb {
+    background: rgba(16, 185, 129, 0.5);
+    border-radius: 10px;
+}
+
+.products-carousel::-webkit-scrollbar-thumb:hover {
+    background: rgba(16, 185, 129, 0.7);
+}
+
+/* Cards no carrossel */
+.products-carousel .premium-product-card {
+    flex: 0 0 160px;
+    width: 160px;
+}
+
+/* Mobile adjustments */
+@media (max-width: 575px) {
+    .products-carousel {
+        gap: 0.5rem;
+    }
+    
+    .products-carousel .premium-product-card {
+        flex: 0 0 140px;
+        width: 140px;
+    }
+}
+
+/* Tablet adjustments */
+@media (min-width: 576px) and (max-width: 768px) {
+    .products-carousel .premium-product-card {
+        flex: 0 0 160px;
+        width: 160px;
+    }
+}
+
+/* Desktop adjustments */
+@media (min-width: 769px) {
+    .products-carousel .premium-product-card {
+        flex: 0 0 180px;
+        width: 180px;
+    }
 }
 </style>
 @endsection
