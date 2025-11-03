@@ -729,107 +729,47 @@ function finalizePurchase() {
         checkoutBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processando...';
         checkoutBtn.disabled = true;
         
-        // Verificar se está online
-        const isOnline = navigator.onLine && (window.offlineStorage?.isOnlineStatus() ?? navigator.onLine);
-        
-        if (isOnline) {
-            // Tentar enviar para o servidor
-            fetch('/compra/save', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                },
-                body: JSON.stringify(purchaseData)
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                if (data.success) {
-                    alert('Compra finalizada com sucesso! 🎉\n\nVocê será redirecionado para o fluxo de caixa.');
-                    
-                    // Limpar carrinho sem confirmação
-                    initializeCart();
-                    document.querySelectorAll('.cart-product-card').forEach(card => {
-                        card.classList.remove('in-cart');
-                        card.querySelector('.cart-controls').style.display = 'none';
-                        card.querySelector('.quantity').textContent = '0';
-                    });
-                    
-                    // Redirecionar para fluxo de caixa
-                    window.location.href = '/cashflow/dashboard';
-                } else {
-                    showNotification('Erro ao salvar compra: ' + data.message, 'error');
-                    checkoutBtn.innerHTML = originalText;
-                    checkoutBtn.disabled = false;
-                }
-            })
-            .catch(error => {
-                console.error('Erro ao enviar para servidor, tentando salvar offline:', error);
+        // Enviar para o servidor
+        fetch('/compra/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify(purchaseData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                alert('Compra finalizada com sucesso! 🎉\n\nVocê será redirecionado para o fluxo de caixa.');
                 
-                // Se falhar, tentar salvar offline
-                if (window.offlineStorage) {
-                    salvarCompraOffline(purchaseData, checkoutBtn, originalText);
-                } else {
-                    showNotification('Erro ao salvar compra. Verifique sua conexão.', 'error');
-                    checkoutBtn.innerHTML = originalText;
-                    checkoutBtn.disabled = false;
-                }
-            });
-        } else {
-            // Está offline, salvar diretamente
-            if (window.offlineStorage) {
-                salvarCompraOffline(purchaseData, checkoutBtn, originalText);
+                // Limpar carrinho sem confirmação
+                initializeCart();
+                document.querySelectorAll('.cart-product-card').forEach(card => {
+                    card.classList.remove('in-cart');
+                    card.querySelector('.cart-controls').style.display = 'none';
+                    card.querySelector('.quantity').textContent = '0';
+                });
+                
+                // Redirecionar para fluxo de caixa
+                window.location.href = '/cashflow/dashboard';
             } else {
-                showNotification('Você está offline e o sistema de armazenamento não está disponível.', 'error');
+                showNotification('Erro ao salvar compra: ' + data.message, 'error');
                 checkoutBtn.innerHTML = originalText;
                 checkoutBtn.disabled = false;
             }
-        }
-    }
-    
-    // Função para salvar compra offline
-    async function salvarCompraOffline(purchaseData, checkoutBtn, originalText) {
-        if (!window.offlineStorage) {
-            showNotification('Sistema offline não disponível.', 'error');
+        })
+        .catch(error => {
+            console.error('Erro ao enviar para servidor:', error);
+            showNotification('Erro ao salvar compra. Verifique sua conexão.', 'error');
             checkoutBtn.innerHTML = originalText;
             checkoutBtn.disabled = false;
-            return;
-        }
-        
-        try {
-            await window.offlineStorage.waitForInit();
-            
-            await window.offlineStorage.savePurchase({
-                items: purchaseData.items || [],
-                store: purchaseData.store || '',
-                date: purchaseData.date || new Date().toISOString(),
-                total: purchaseData.total || 0
-            });
-            
-            alert('✅ Compra salva offline!\n\nA compra será sincronizada automaticamente quando você voltar online.');
-            
-            // Limpar carrinho
-            initializeCart();
-            document.querySelectorAll('.cart-product-card').forEach(card => {
-                card.classList.remove('in-cart');
-                card.querySelector('.cart-controls').style.display = 'none';
-                card.querySelector('.quantity').textContent = '0';
-            });
-            
-            checkoutBtn.innerHTML = originalText;
-            checkoutBtn.disabled = false;
-            
-        } catch (error) {
-            console.error('❌ Erro ao salvar offline:', error);
-            showNotification('Erro ao salvar compra offline: ' + error.message, 'error');
-            checkoutBtn.innerHTML = originalText;
-            checkoutBtn.disabled = false;
-        }
+        });
     }
     
 }

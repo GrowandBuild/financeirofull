@@ -19,8 +19,6 @@
         <link rel="apple-touch-icon" sizes="192x192" href="{{ asset('images/icon-192x192.png') }}">
         <link rel="apple-touch-icon" sizes="512x512" href="{{ asset('images/icon-512x512.png') }}">
         
-        <!-- Manifest PWA -->
-        <link rel="manifest" href="{{ asset('manifest.json') }}">
 
     <title>{{ config('app.name', 'Laravel') }} - @yield('title', 'Fluxo de Caixa')</title>
     
@@ -36,14 +34,6 @@
     <!-- Font Awesome para ícones adicionais -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Offline Storage -->
-    <script src="{{ asset('js/offline-storage.js') }}?v={{ filemtime(public_path('js/offline-storage.js')) }}"></script>
-    
-    <!-- Offline Forms Interceptor -->
-    <script src="{{ asset('js/offline-forms.js') }}?v={{ filemtime(public_path('js/offline-forms.js')) }}"></script>
-    
-    <!-- Offline Sync (sincronização automática) -->
-    <script src="{{ asset('js/offline-sync.js') }}?v={{ filemtime(public_path('js/offline-sync.js')) }}"></script>
     
     <!-- Custom CSS para Fluxo de Caixa -->
     <style>
@@ -566,33 +556,5 @@
     
     @yield('scripts')
     
-    <!-- Registrar Service Worker -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', async () => {
-                try {
-                    const registration = await navigator.serviceWorker.register('/sw.js', {
-                        scope: '/'
-                    });
-                    console.log('✅ Service Worker registrado:', registration.scope);
-                    
-                    // Escutar atualizações
-                    registration.addEventListener('updatefound', () => {
-                        const newWorker = registration.installing;
-                        newWorker.addEventListener('statechange', () => {
-                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                if (confirm('Nova versão disponível! Deseja atualizar?')) {
-                                    newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                    window.location.reload();
-                                }
-                            }
-                        });
-                    });
-                } catch (error) {
-                    console.error('❌ Erro ao registrar Service Worker:', error);
-                }
-            });
-        }
-    </script>
     </body>
 </html>

@@ -26,7 +26,6 @@
         <link rel="apple-touch-icon" sizes="512x512" href="{{ asset('images/icon-512x512.png') }}">
         
         <!-- Manifest PWA -->
-        <link rel="manifest" href="{{ asset('manifest.json') }}">
 
         <title>{{ config('app.name', 'Laravel') }} - @yield('title', 'Meus Produtos')</title>
         
@@ -56,46 +55,8 @@
             };
         </script>
         
-        <!-- Offline Storage -->
-        <script src="{{ asset('js/offline-storage.js') }}?v={{ filemtime(public_path('js/offline-storage.js')) }}"></script>
-        
-        <!-- Offline Forms Interceptor -->
-        <script src="{{ asset('js/offline-forms.js') }}?v={{ filemtime(public_path('js/offline-forms.js')) }}"></script>
-        
-        <!-- Offline Sync (sincronização automática) -->
-        <script src="{{ asset('js/offline-sync.js') }}?v={{ filemtime(public_path('js/offline-sync.js')) }}"></script>
-        
         <!-- Custom JavaScript -->
         <script src="{{ asset('js/app.js') }}?v={{ filemtime(public_path('js/app.js')) }}"></script>
-        
-        <!-- Registrar Service Worker -->
-        <script>
-            if ('serviceWorker' in navigator) {
-                window.addEventListener('load', async () => {
-                    try {
-                        const registration = await navigator.serviceWorker.register('/sw.js', {
-                            scope: '/'
-                        });
-                        console.log('✅ Service Worker registrado:', registration.scope);
-                        
-                        // Escutar atualizações
-                        registration.addEventListener('updatefound', () => {
-                            const newWorker = registration.installing;
-                            newWorker.addEventListener('statechange', () => {
-                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    if (confirm('Nova versão disponível! Deseja atualizar?')) {
-                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                        window.location.reload();
-                                    }
-                                }
-                            });
-                        });
-                    } catch (error) {
-                        console.error('❌ Erro ao registrar Service Worker:', error);
-                    }
-                });
-            }
-        </script>
     </head>
 <body>
     <!-- Switcher de Sistemas -->
@@ -300,66 +261,6 @@
             });
         }
         
-        // Detectar quando o app pode ser instalado (PWA Install Prompt)
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            
-            // Mostrar botão de instalação (opcional)
-            showInstallButton();
-        });
-        
-        function showInstallButton() {
-            // Criar botão de instalação se não existir
-            if (!document.getElementById('install-button')) {
-                const installBtn = document.createElement('button');
-                installBtn.id = 'install-button';
-                installBtn.innerHTML = '<i class="bi bi-download"></i> Instalar App';
-                installBtn.style.cssText = `
-                    position: fixed;
-                    bottom: 80px;
-                    right: 20px;
-                    background: #10b981;
-                    color: white;
-                    border: none;
-                    padding: 12px 20px;
-                    border-radius: 25px;
-                    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-                    cursor: pointer;
-                    z-index: 9999;
-                    font-weight: 600;
-                    transition: all 0.3s;
-                `;
-                installBtn.onclick = async () => {
-                    if (deferredPrompt) {
-                        deferredPrompt.prompt();
-                        const { outcome } = await deferredPrompt.userChoice;
-                        console.log(`Instalação: ${outcome}`);
-                        deferredPrompt = null;
-                        installBtn.remove();
-                    }
-                };
-                installBtn.onmouseover = () => {
-                    installBtn.style.background = '#059669';
-                };
-                installBtn.onmouseout = () => {
-                    installBtn.style.background = '#10b981';
-                };
-                document.body.appendChild(installBtn);
-            }
-        }
-        
-        // Quando o app é instalado
-        window.addEventListener('appinstalled', () => {
-            console.log('App instalado com sucesso!');
-            const installBtn = document.getElementById('install-button');
-            if (installBtn) {
-                installBtn.remove();
-            }
-        });
-    </script>
-    
     @yield('scripts')
     @stack('scripts')
 </body>
