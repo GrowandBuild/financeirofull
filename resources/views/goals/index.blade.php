@@ -15,11 +15,82 @@
 
 <!-- Premium Content -->
 <div class="premium-content">
+    <!-- Seletor de Mês/Ano -->
+    <div class="premium-product-card" style="margin-bottom: 20px; padding: 1rem;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-2">
+                <h4 class="mb-0" style="color: white; font-size: 1rem;">
+                    <i class="bi bi-calendar3 me-2"></i>Período:
+                </h4>
+                @php
+                    $monthNames = [
+                        1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril',
+                        5 => 'Maio', 6 => 'Junho', 7 => 'Julho', 8 => 'Agosto',
+                        9 => 'Setembro', 10 => 'Outubro', 11 => 'Novembro', 12 => 'Dezembro'
+                    ];
+                    $currentMonth = $selectedDate->month;
+                    $currentYear = $selectedDate->year;
+                    $prevMonth = $selectedDate->copy()->subMonth();
+                    $nextMonth = $selectedDate->copy()->addMonth();
+                    $isCurrentMonth = $selectedDate->isCurrentMonth();
+                @endphp
+                
+                <div class="d-flex align-items-center gap-2">
+                    <a href="{{ route('goals.index', ['month' => $prevMonth->month, 'year' => $prevMonth->year]) }}" 
+                       class="btn btn-sm" 
+                       style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 0.4rem 0.8rem;">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                    
+                    <select id="monthYearSelector" 
+                            class="form-select form-select-sm" 
+                            style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); min-width: 200px; cursor: pointer;"
+                            onchange="window.location.href = this.value">
+                        @php
+                            $hasCurrentMonth = false;
+                            foreach($availableMonths as $available) {
+                                if($available['month'] == $currentMonth && $available['year'] == $currentYear) {
+                                    $hasCurrentMonth = true;
+                                    break;
+                                }
+                            }
+                        @endphp
+                        @foreach($availableMonths as $available)
+                            <option value="{{ route('goals.index', ['month' => $available['month'], 'year' => $available['year']]) }}"
+                                    {{ $available['month'] == $currentMonth && $available['year'] == $currentYear ? 'selected' : '' }}>
+                                {{ $available['label'] }}
+                            </option>
+                        @endforeach
+                        @if(!$hasCurrentMonth)
+                            <option value="{{ route('goals.index', ['month' => $currentMonth, 'year' => $currentYear]) }}" selected>
+                                {{ $monthNames[$currentMonth] }}/{{ $currentYear }}
+                            </option>
+                        @endif
+                    </select>
+                    
+                    <a href="{{ route('goals.index', ['month' => $nextMonth->month, 'year' => $nextMonth->year]) }}" 
+                       class="btn btn-sm {{ $isCurrentMonth ? 'disabled' : '' }}" 
+                       style="background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 0.4rem 0.8rem; {{ $isCurrentMonth ? 'opacity: 0.5; pointer-events: none;' : '' }}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+            
+            <div>
+                <a href="{{ route('goals.index') }}" 
+                   class="btn btn-sm" 
+                   style="background: #10b981; color: white; border: none; padding: 0.4rem 1rem;">
+                    <i class="bi bi-calendar-check me-1"></i>Mês Atual
+                </a>
+            </div>
+        </div>
+    </div>
+    
     <!-- Monitoramento Padrão -->
     <div class="premium-product-card" style="margin-bottom: 20px; flex-direction: column; align-items: stretch; cursor: auto;">
         <div class="mb-3">
             <h3 class="mb-1" style="color: white; font-size: 1.2rem;">
-                <i class="bi bi-pie-chart me-2"></i>Monitoramento do Mês Atual
+                <i class="bi bi-pie-chart me-2"></i>Monitoramento {{ $isCurrentMonth ? 'do Mês Atual' : 'de ' . $monthNames[$currentMonth] . '/' . $currentYear }}
             </h3>
             <p class="mb-0" style="color: rgba(255,255,255,0.7); font-size: 0.9rem;">
                 Acompanhe sua distribuição financeira seguindo o padrão: 40% Despesas Fixas, 10% Recursos Profissionais, 30% Reservas, 10% Lazer, 10% Dívidas
@@ -161,7 +232,7 @@
                                 R$ {{ number_format($defaultGoalData['total_income'], 2, ',', '.') }}
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-4" id="expensesCard" style="cursor: pointer; transition: all 0.3s;" onmouseover="this.style.transform='scale(1.02)'; this.style.opacity='0.9';" onmouseout="this.style.transform='scale(1)'; this.style.opacity='1';" onclick="openExpensesModal()">
                             <div style="color: #9ca3af; font-size: 0.85rem; margin-bottom: 0.25rem;">
                                 <i class="bi bi-arrow-up-circle text-danger"></i> Total Despesas
                             </div>
@@ -197,6 +268,12 @@
                         </div>
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <div class="text-center flex-grow-1">
+                                <div style="color: #10b981; font-size: 1rem; font-weight: 600;">
+                                    R$ {{ number_format($category['expected_monthly_amount'] ?? 0, 2, ',', '.') }}
+                                </div>
+                                <div style="color: #9ca3af; font-size: 0.75rem;">Valor Esperado</div>
+                            </div>
+                            <div class="text-center flex-grow-1" style="border-left: 1px solid rgba(255,255,255,0.2);">
                                 <div style="color: #3b82f6; font-size: 1rem; font-weight: 600;">
                                     R$ {{ number_format($category['available_amount'], 2, ',', '.') }}
                                 </div>
@@ -236,5 +313,6 @@
     </div>
 </div>
 
+@include('components.expenses-modal')
 
 @endsection

@@ -45,6 +45,21 @@
                         </select>
                     </div>
                     
+                <!-- Subquantity Field (for grams, ml, etc) -->
+                <div class="product-modal-field" id="subquantityField" style="display: none;">
+                    <label class="product-modal-label">
+                            <i class="bi bi-123"></i>
+                        <span id="subquantityLabel">Quantidade em gramas</span> <span class="text-danger">*</span>
+                        </label>
+                    <input type="number" 
+                           class="product-modal-input" 
+                           id="subquantityInput" 
+                           placeholder="Ex: 500" 
+                           step="0.01" 
+                           min="0">
+                    <small class="product-modal-help-text" id="subquantityHelp"></small>
+                </div>
+                    
                 <!-- Quantity and Price -->
                 <div class="product-modal-row">
                     <div class="product-modal-col">
@@ -127,9 +142,11 @@
 .product-modal-container {
     width: 100%;
     max-width: 480px;
-    max-height: 95vh;
+    max-height: 90vh;
     overflow: hidden;
     will-change: transform;
+    display: flex;
+    flex-direction: column;
 }
 
 .product-modal-content {
@@ -138,6 +155,9 @@
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
     overflow: hidden;
     border: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
 }
 
 /* Header */
@@ -145,13 +165,14 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.75rem;
     background: rgba(255, 255, 255, 0.05);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
 }
 
 .product-modal-title {
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 600;
     color: #fff;
     margin: 0;
@@ -178,15 +199,16 @@
 .product-modal-product-info {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
     background: rgba(255, 255, 255, 0.03);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
 }
 
 .product-modal-image-wrapper {
-    width: 60px;
-    height: 60px;
+    width: 50px;
+    height: 50px;
     border-radius: 8px;
     overflow: hidden;
     background: rgba(255, 255, 255, 0.05);
@@ -205,37 +227,40 @@
 }
 
 .product-modal-product-name {
-    font-size: 0.95rem;
+    font-size: 0.875rem;
     font-weight: 600;
     color: #fff;
-    margin: 0 0 0.125rem 0;
+    margin: 0 0 0.0625rem 0;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
 .product-modal-product-category {
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     color: rgba(255, 255, 255, 0.6);
 }
 
 /* Form */
 .product-modal-form {
-    padding: 1rem;
+    padding: 0.75rem;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 .product-modal-field {
-    margin-bottom: 0.875rem;
+    margin-bottom: 0.625rem;
 }
 
 .product-modal-label {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
-    font-size: 0.8rem;
+    gap: 0.25rem;
+    font-size: 0.75rem;
     font-weight: 500;
     color: rgba(255, 255, 255, 0.9);
-    margin-bottom: 0.375rem;
+    margin-bottom: 0.25rem;
 }
 
 .product-modal-label i {
@@ -245,12 +270,12 @@
 
 .product-modal-select {
     width: 100%;
-    padding: 0.5rem 0.75rem;
+    padding: 0.4rem 0.6rem;
     background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 6px;
     color: #fff;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     cursor: pointer;
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
@@ -271,11 +296,40 @@
     color: #fff;
 }
 
+.product-modal-input {
+    width: 100%;
+    padding: 0.4rem 0.6rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 0.8rem;
+    min-width: 0;
+}
+
+.product-modal-input:focus {
+    outline: none;
+    border-color: #10b981;
+    background-color: rgba(255, 255, 255, 0.08);
+}
+
+.product-modal-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.product-modal-help-text {
+    display: block;
+    margin-top: 0.125rem;
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.2;
+}
+
 .product-modal-row {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 0.75rem;
-    margin-bottom: 0.875rem;
+    gap: 0.5rem;
+    margin-bottom: 0.625rem;
     align-items: end;
 }
 
@@ -305,12 +359,12 @@
     background: transparent;
     border: none;
     color: rgba(255, 255, 255, 0.7);
-    padding: 0.5rem;
+    padding: 0.375rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 32px;
+    min-width: 28px;
 }
 
 .product-modal-qty-btn:hover {
@@ -324,8 +378,8 @@
     border: none;
     color: #fff;
     text-align: center;
-    padding: 0.5rem;
-    font-size: 0.875rem;
+    padding: 0.375rem;
+    font-size: 0.8rem;
     font-weight: 500;
     min-width: 0;
 }
@@ -345,11 +399,11 @@
 }
 
 .product-modal-currency {
-    padding: 0.5rem 0.75rem;
+    padding: 0.4rem 0.6rem;
     background: rgba(16, 185, 129, 0.2);
     color: #10b981;
     font-weight: 600;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     border-right: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -358,8 +412,8 @@
     background: transparent;
     border: none;
     color: #fff;
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
     min-width: 0;
 }
 
@@ -373,8 +427,8 @@
 
 /* Total */
 .product-modal-total {
-    margin-top: 0.875rem;
-    padding-top: 0.875rem;
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -385,16 +439,16 @@
     background: rgba(16, 185, 129, 0.15);
     border: 1px solid rgba(16, 185, 129, 0.3);
     border-radius: 6px;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.75rem;
 }
 
 .product-modal-total-label {
     display: flex;
     align-items: center;
-    gap: 0.375rem;
+    gap: 0.25rem;
     color: rgba(255, 255, 255, 0.9);
     font-weight: 500;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
 }
 
 .product-modal-total-label i {
@@ -403,7 +457,7 @@
 }
 
 .product-modal-total-value {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     font-weight: 700;
     color: #10b981;
 }
@@ -412,23 +466,24 @@
 .product-modal-footer {
     display: flex;
     gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    padding: 0.5rem 0.75rem;
     background: rgba(255, 255, 255, 0.05);
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
 }
 
 .product-modal-btn {
     flex: 1;
-    padding: 0.625rem 1rem;
+    padding: 0.5rem 0.75rem;
     border: none;
     border-radius: 6px;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 600;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 0.375rem;
+    gap: 0.25rem;
 }
 
 .product-modal-btn-cancel {
@@ -456,11 +511,33 @@
     transform: none;
 }
 
+/* Garantir que o formulário tenha scroll quando necessário */
+@media (max-height: 700px) {
+    .product-modal-form {
+        max-height: calc(90vh - 200px);
+        overflow-y: auto;
+    }
+    
+    .product-modal-container {
+        max-height: 95vh;
+    }
+}
+
 /* Responsive */
 @media (max-width: 576px) {
     .product-modal-container {
         max-width: 100%;
         padding: 0;
+        max-height: 95vh;
+    }
+    
+    .product-modal-content {
+        max-height: 95vh;
+    }
+    
+    .product-modal-form {
+        max-height: calc(95vh - 180px);
+        overflow-y: auto;
     }
     
     .product-modal-row {
@@ -469,6 +546,7 @@
     
     .product-modal-footer {
         flex-direction: column;
+        flex-shrink: 0;
     }
     
     .product-modal-btn {

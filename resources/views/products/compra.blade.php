@@ -501,7 +501,7 @@ function openProductModal(productId, productName, productCategory, productImage)
 // Add product to cart from modal
 // Aceita objeto com dados ou pega do DOM
 function addToCartFromModal(data = null) {
-    let variant, unit, quantity, price, productId, productName, productCategory;
+    let variant, unit, quantity, subquantity, price, productId, productName, productCategory;
     
     // Se dados foram passados como objeto (novo modal)
     if (data && typeof data === 'object') {
@@ -511,12 +511,15 @@ function addToCartFromModal(data = null) {
         variant = data.variant || 'Padrão';
         unit = data.unit;
         quantity = data.quantity || 1;
+        subquantity = data.subquantity || null;
         price = data.price;
     } else {
         // Pegar do DOM (compatibilidade com código antigo)
         variant = document.getElementById('variantSelect')?.value || 'Padrão';
         unit = document.getElementById('unitSelect')?.value;
         quantity = parseInt(document.getElementById('modalQuantity')?.value) || 1;
+        const subquantityInput = document.getElementById('subquantityInput');
+        subquantity = subquantityInput && subquantityInput.value ? parseFloat(subquantityInput.value.replace(',', '.')) : null;
         price = parseFloat(document.getElementById('modalPrice')?.value?.replace(',', '.')) || 0;
         
         if (!currentProduct || !currentProduct.id) {
@@ -545,12 +548,28 @@ function addToCartFromModal(data = null) {
         return;
     }
     
-    // Criar chave única para o carrinho
+    // Criar chave única para o carrinho (incluindo subquantity se houver)
     const variantForKey = variant || 'Padrão';
-    const cartKey = `${productId}_${variantForKey}_${unit}`;
+    const subquantityKey = subquantity ? `_${subquantity}` : '';
+    const cartKey = `${productId}_${variantForKey}_${unit}${subquantityKey}`;
     const displayName = variant && variant !== 'Padrão' && variant !== ''
         ? `${productName} - ${variant}` 
         : productName;
+    
+    // Adicionar informação de subquantidade ao nome de exibição se houver
+    let displayNameWithSubquantity = displayName;
+    if (subquantity) {
+        const unitLower = unit.toLowerCase();
+        if (unitLower === 'g' || unitLower === 'grama') {
+            displayNameWithSubquantity += ` (${subquantity}g)`;
+        } else if (unitLower === 'ml' || unitLower === 'mililitro') {
+            displayNameWithSubquantity += ` (${subquantity}ml)`;
+        } else if (unitLower === 'kg' || unitLower === 'quilograma') {
+            displayNameWithSubquantity += ` (${subquantity}g)`;
+        } else if (unitLower === 'l' || unitLower === 'litro') {
+            displayNameWithSubquantity += ` (${subquantity}ml)`;
+        }
+    }
     
     if (!cart[cartKey]) {
         cart[cartKey] = {
@@ -558,7 +577,8 @@ function addToCartFromModal(data = null) {
             name: productName,
             variant: variant,
             unit: unit,
-            displayName: displayName,
+            subquantity: subquantity,
+            displayName: displayNameWithSubquantity,
             category: productCategory,
             image: currentProduct?.image || '',
             quantity: 0,
@@ -576,10 +596,10 @@ function addToCartFromModal(data = null) {
     // Fechar selects antes de fechar o modal
     const unitSelect = document.getElementById('unitSelect');
     const variantSelect = document.getElementById('variantSelect');
-    unitSelect.blur();
-    variantSelect.blur();
-    unitSelect.size = 1;
-    variantSelect.size = 1;
+    if (unitSelect) unitSelect.blur();
+    if (variantSelect) variantSelect.blur();
+    if (unitSelect) unitSelect.size = 1;
+    if (variantSelect) variantSelect.size = 1;
     
     // Close modal
     if (modalInstance) {
@@ -850,7 +870,8 @@ function finalizePurchase() {
                 product_id: parseInt(item.id), // Garantir que seja um número inteiro
                 quantity: parseFloat(item.quantity),
                 price: parseFloat(item.price),
-                variant: item.variant || null
+                variant: item.variant || null,
+                subquantity: item.subquantity ? parseFloat(item.subquantity) : null
             };
             
             console.log(`Item ${index} mapeado:`, mappedItem);
@@ -880,39 +901,85 @@ function finalizePurchase() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                'Accept': 'application/json'
             },
             body: JSON.stringify(purchaseData)
         })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+        .then(async response => {
+            console.log('Response status:', response.status);
+            console.log('Response ok:', response.ok);
+            
+            // Tentar obter o texto da resposta primeiro para debug
+            const responseText = await response.text();
+            console.log('Response text:', responseText);
+            
+            let data;
+            try {
+                data = JSON.parse(responseText);
+            } catch (e) {
+                console.error('Erro ao fazer parse do JSON:', e);
+                console.error('Response text:', responseText);
+                // Se não for JSON válido mas o status for 200, considerar sucesso
+                if (response.ok) {
+                    return { success: true, message: 'Compra salva com sucesso!' };
+                }
+                throw new Error('Resposta do servidor não é um JSON válido');
             }
-            return response.json();
+            
+            // Se a resposta não foi OK, mas temos dados válidos, retornar os dados
+            // para que o código de sucesso possa verificar
+            if (!response.ok && data.success === false) {
+                return data; // Deixar o código de verificação tratar
+            }
+            
+            // Se não for OK e não tiver success definido, lançar erro
+            if (!response.ok) {
+                throw new Error(data.message || `HTTP ${response.status}`);
+            }
+            
+            return data;
         })
         .then(data => {
-            if (data.success) {
+            console.log('Dados recebidos:', data);
+            console.log('data.success:', data.success);
+            console.log('typeof data.success:', typeof data.success);
+            
+            // Verificar se é sucesso (pode ser true, 'true', 1, etc)
+            const isSuccess = data.success === true || 
+                              data.success === 'true' || 
+                              data.success === 1 || 
+                              data.success === '1';
+            
+            if (isSuccess) {
                 alert('Compra finalizada com sucesso! 🎉\n\nVocê será redirecionado para o fluxo de caixa.');
                 
                 // Limpar carrinho sem confirmação
                 initializeCart();
                 document.querySelectorAll('.cart-product-card').forEach(card => {
                     card.classList.remove('in-cart');
-                    card.querySelector('.cart-controls').style.display = 'none';
-                    card.querySelector('.quantity').textContent = '0';
+                    const controls = card.querySelector('.cart-controls');
+                    if (controls) controls.style.display = 'none';
+                    const quantity = card.querySelector('.quantity');
+                    if (quantity) quantity.textContent = '0';
                 });
                 
                 // Redirecionar para fluxo de caixa
                 window.location.href = '/cashflow/dashboard';
             } else {
-                showNotification('Erro ao salvar compra: ' + data.message, 'error');
+                const errorMessage = data.message || 'Erro desconhecido ao salvar compra';
+                console.error('Erro do servidor:', errorMessage);
+                console.error('Dados completos:', data);
+                showNotification('Erro ao salvar compra: ' + errorMessage, 'error');
                 checkoutBtn.innerHTML = originalText;
                 checkoutBtn.disabled = false;
             }
         })
         .catch(error => {
             console.error('Erro ao enviar para servidor:', error);
-            showNotification('Erro ao salvar compra. Verifique sua conexão.', 'error');
+            console.error('Stack trace:', error.stack);
+            const errorMessage = error.message || 'Erro desconhecido';
+            showNotification('Erro ao salvar compra: ' + errorMessage + '. Verifique sua conexão.', 'error');
             checkoutBtn.innerHTML = originalText;
             checkoutBtn.disabled = false;
         });

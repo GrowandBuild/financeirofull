@@ -11,6 +11,7 @@ use App\Policies\PurchasePolicy;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ProductController extends Controller
 {
@@ -49,7 +50,42 @@ class ProductController extends Controller
         // Gasto total mensal usando Service
         $totalMonthlySpend = $this->statsService->getTotalMonthlySpend();
 
-        return view('products.index', compact('products', 'topProducts', 'totalMonthlySpend', 'totalProductsCount'));
+        // Produtos comprados recentemente (últimos produtos com compras)
+        // Buscar produtos que têm compras do usuário atual, ordenados pela data da última compra
+        $recentProducts = Product::whereHas('purchases', function($query) {
+                $query->where('user_id', Auth::id());
+            })
+            ->select([
+                'products.id', 'products.name', 'products.category', 'products.unit',
+                'products.image', 'products.image_path', 'products.variants', 'products.has_variants',
+                'products.average_price', 'products.last_price', 'products.total_spent', 'products.purchase_count'
+            ])
+            ->with(['purchases' => function($query) {
+                $query->where('user_id', Auth::id())
+                      ->orderBy('purchase_date', 'desc')
+                      ->limit(1)
+                      ->select('id', 'product_id', 'purchase_date');
+            }])
+            ->get()
+            ->map(function($product) {
+                $latestPurchase = $product->purchases->first();
+                $product->latest_purchase_date = $latestPurchase ? $latestPurchase->purchase_date : null;
+                return $product;
+            })
+            ->filter(function($product) {
+                return $product->latest_purchase_date !== null;
+            })
+            ->sortByDesc('latest_purchase_date')
+            ->take(8)
+            ->values();
+
+        // Calcular estatísticas mensais para produtos recentes
+        $recentMonthlyStats = $this->statsService->getMonthlyStatsForProducts($recentProducts);
+        $recentProducts->each(function ($product) use ($recentMonthlyStats) {
+            $product->monthly_spend = $recentMonthlyStats[$product->id] ?? 0;
+        });
+
+        return view('products.index', compact('products', 'topProducts', 'totalMonthlySpend', 'totalProductsCount', 'recentProducts'));
     }
 
     public function show(Product $product)
@@ -81,12 +117,16 @@ class ProductController extends Controller
             'average_price', 'last_price', 'total_spent', 'purchase_count'
         ]);
         
+        // Aplicar busca apenas se houver query
         if ($query) {
             $query = trim($query);
-            $productsQuery->where(function($q) use ($query) {
-                $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($query) . '%'])
-                  ->orWhereRaw('LOWER(description) LIKE ?', ['%' . strtolower($query) . '%']);
-            });
+            if (!empty($query)) {
+                $productsQuery->where(function($q) use ($query) {
+                    $q->whereRaw('LOWER(name) LIKE ?', ['%' . strtolower($query) . '%'])
+                      ->orWhereRaw('LOWER(description) LIKE ?', ['%' . strtolower($query) . '%'])
+                      ->orWhereRaw('LOWER(category) LIKE ?', ['%' . strtolower($query) . '%']);
+                });
+            }
         }
         
         if ($category) {
@@ -270,15 +310,30 @@ class ProductController extends Controller
     public function savePurchase(Request $request)
     {
         // Validação completa
-        $request->validate([
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|integer|exists:products,id',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.price' => 'required|numeric|min:0.01',
-            'items.*.variant' => 'nullable|string|max:255',
-            'store' => 'required|string|max:255',
-            'date' => 'required|date'
-        ]);
+        try {
+            $validated = $request->validate([
+                'items' => 'required|array|min:1',
+                'items.*.product_id' => 'required|integer|exists:products,id',
+                'items.*.quantity' => 'required|numeric|min:0.01',
+                'items.*.price' => 'required|numeric|min:0.01',
+                'items.*.variant' => 'nullable|string|max:255',
+                'items.*.subquantity' => 'nullable|numeric|min:0',
+                'store' => 'required|string|max:255',
+                'date' => 'required|date'
+            ]);
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+            $errorMessages = [];
+            foreach ($errors as $field => $messages) {
+                $errorMessages = array_merge($errorMessages, $messages);
+            }
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'Erro de validação: ' . implode(', ', $errorMessages),
+                'errors' => $errors
+            ], 422);
+        }
         
         if (empty($request->items)) {
             return response()->json([
@@ -325,17 +380,43 @@ class ProductController extends Controller
             $cashFlows = [];
             
             foreach ($request->items as $item) {
-                // Buscar departamento do produto
+                // Buscar produto para obter a unidade
                 $product = Product::find($item['product_id']);
                 $department = $product->goal_category ?? null;
+                $unit = strtolower(trim($product->unit ?? 'un'));
                 
-                // Criar cashflow primeiro
+                // Processar quantidade e subquantidade PRIMEIRO
+                $quantity = $item['quantity'];
+                $subquantity = isset($item['subquantity']) && $item['subquantity'] > 0 ? $item['subquantity'] : null;
+                
+                // Se há subquantidade, processar de acordo com a unidade
+                if ($subquantity) {
+                    if ($unit === 'kg' || $unit === 'quilograma') {
+                        // Se unidade é kg e subquantity está em gramas, converter gramas para kg
+                        // Mas manter a subquantidade para exibição precisa
+                        $quantity = $subquantity / 1000; // Converter gramas para kg para cálculo
+                    } elseif ($unit === 'l' || $unit === 'litro') {
+                        // Se unidade é L e subquantity está em mililitros, converter ml para L
+                        // Mas manter a subquantidade para exibição precisa
+                        $quantity = $subquantity / 1000; // Converter mililitros para litros para cálculo
+                    } elseif ($unit === 'g' || $unit === 'grama') {
+                        // Se unidade é grama, a quantidade é a subquantidade
+                        $quantity = $subquantity;
+                        $subquantity = null; // Não precisa armazenar subquantidade se já é a unidade principal
+                    } elseif ($unit === 'ml' || $unit === 'mililitro') {
+                        // Se unidade é mililitro, a quantidade é a subquantidade
+                        $quantity = $subquantity;
+                        $subquantity = null; // Não precisa armazenar subquantidade se já é a unidade principal
+                    }
+                }
+                
+                // Criar cashflow primeiro (usando quantidade convertida)
                 $cashFlow = CashFlow::create([
                     'user_id' => $userId,
                     'type' => 'expense',
                     'title' => "Compra - {$request->store}",
                     'description' => isset($item['variant']) ? "Variante: {$item['variant']}" : $product->name,
-                    'amount' => $item['quantity'] * $item['price'],
+                    'amount' => $quantity * $item['price'],
                     'category_id' => $purchaseCategory->id,
                     'goal_category' => $department,
                     'transaction_date' => $request->date ?? now(),
@@ -347,11 +428,12 @@ class ProductController extends Controller
                 // Criar purchase com cashflow_id
                 $purchase = Purchase::create([
                     'user_id' => $userId,
+                    'subquantity' => $subquantity,
                     'cashflow_id' => $cashFlow->id,
                     'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
+                    'quantity' => $quantity,
                     'price' => $item['price'],
-                    'total_value' => $item['quantity'] * $item['price'],
+                    'total_value' => $quantity * $item['price'],
                     'store' => $request->store ?? 'Loja Teste',
                     'purchase_date' => $request->date ?? now(),
                     'notes' => isset($item['variant']) ? "Variante: {$item['variant']}" : null

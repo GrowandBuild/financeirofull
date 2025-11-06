@@ -16,6 +16,7 @@ class Purchase extends Model
         'purchase_date',
         'price',
         'quantity',
+        'subquantity',
         'total_value',
         'store',
         'notes',
@@ -25,6 +26,7 @@ class Purchase extends Model
         'purchase_date' => 'date',
         'price' => 'decimal:2',
         'quantity' => 'decimal:2',
+        'subquantity' => 'decimal:2',
         'total_value' => 'decimal:2',
     ];
 

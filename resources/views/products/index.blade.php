@@ -88,6 +88,44 @@
         @endif
     </div>
     
+    <!-- Recent Products Section -->
+    @if(isset($recentProducts) && $recentProducts->count() > 0)
+        <div class="section-header">
+            <h3 class="section-title">
+                <i class="bi bi-clock-history"></i>
+                Produtos Comprados Recentemente
+            </h3>
+        </div>
+        
+        <!-- Recent Products Grid -->
+        <div class="recent-products-grid">
+            @foreach($recentProducts as $product)
+                <div class="premium-product-card" onclick="viewProduct({{ $product->id }})">
+                    <div class="premium-product-image">
+                        <img src="{{ $product->image_url ?? asset('images/no-image.png') }}" 
+                             alt="{{ $product->name }}" 
+                             class="img-fluid"
+                             loading="lazy"
+                             onerror="this.onerror=null; this.src='{{ asset('images/no-image.png') }}';">
+                        <div class="product-overlay">
+                            <i class="bi bi-eye"></i>
+                        </div>
+                    </div>
+                    <div class="premium-product-info">
+                        <h5 class="premium-product-name">{{ $product->name }}</h5>
+                        <div class="premium-product-category">{{ $product->category ?? 'Sem categoria' }}</div>
+                        @if($product->monthly_spend > 0)
+                            <div class="premium-product-price">
+                                R$ {{ number_format($product->monthly_spend, 2, ',', '.') }}
+                                <small class="text-white/60 text-xs block">Total do mês</small>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endforeach
+        </div>
+    @endif
+    
     <!-- All Products Section -->
     <div class="section-header">
         <h3 class="section-title">
@@ -221,6 +259,159 @@
 
 .premium-btn i {
     font-size: 1rem;
+}
+
+/* Grid de Produtos Recentes */
+.recent-products-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 1rem;
+    margin-bottom: 2rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.recent-products-grid .premium-product-card {
+    display: flex;
+    flex-direction: column;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border-radius: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    padding: 0;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+.recent-products-grid .premium-product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border-color: rgba(16, 185, 129, 0.4);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
+}
+
+.recent-products-grid .premium-product-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    min-height: 150px;
+    flex-shrink: 0;
+    border-radius: 0;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.recent-products-grid .premium-product-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.recent-products-grid .premium-product-card:hover .premium-product-image img {
+    transform: scale(1.05);
+}
+
+.recent-products-grid .product-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.7));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(2px);
+}
+
+.recent-products-grid .premium-product-card:hover .product-overlay {
+    opacity: 1;
+}
+
+.recent-products-grid .product-overlay i {
+    color: white;
+    font-size: 1.5rem;
+}
+
+.recent-products-grid .premium-product-info {
+    padding: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.recent-products-grid .premium-product-name {
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin: 0;
+    line-height: 1.3;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.recent-products-grid .premium-product-category {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.75rem;
+    margin: 0;
+}
+
+.recent-products-grid .premium-product-price {
+    color: #10b981;
+    font-size: 0.875rem;
+    font-weight: 700;
+    margin-top: 0.25rem;
+}
+
+.recent-products-grid .premium-product-price small {
+    display: block;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.625rem;
+    font-weight: 400;
+    margin-top: 0.125rem;
+}
+
+/* Responsividade - Mobile: 4 produtos */
+@media (max-width: 768px) {
+    .recent-products-grid {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .recent-products-grid .premium-product-image {
+        min-height: 120px;
+    }
+    
+    .recent-products-grid .premium-product-info {
+        padding: 0.625rem;
+    }
+    
+    .recent-products-grid .premium-product-name {
+        font-size: 0.75rem;
+    }
+    
+    .recent-products-grid .premium-product-category {
+        font-size: 0.625rem;
+    }
+    
+    .recent-products-grid .premium-product-price {
+        font-size: 0.75rem;
+    }
+}
+
+/* Responsividade - Tablets: 6 produtos */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .recent-products-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
 }
 
 /* Paginação agora está no app.css otimizado para melhor performance */

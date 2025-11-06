@@ -61,12 +61,23 @@
                         <label for="category" class="block text-sm font-medium text-white/90">
                             Categoria
                         </label>
-                        <input type="text" 
-                               name="category" 
-                               id="category" 
-                               value="{{ old('category') }}"
-                               class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 @error('category') border-red-500/50 focus:ring-red-500 @enderror"
-                               placeholder="Ex: Laticínios, Carnes, etc">
+                        <div class="flex gap-2">
+                            <select name="category" 
+                                    id="category" 
+                                    class="w-full bg-white/10 border border-white/20 rounded-lg px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all duration-300 @error('category') border-red-500/50 focus:ring-red-500 @enderror">
+                                <option value="">Selecione uma categoria...</option>
+                            </select>
+                            <button type="button" 
+                                    onclick="window.openCategoryModal()"
+                                    class="px-4 py-3 bg-emerald-500/20 border border-emerald-500/30 rounded-lg text-emerald-400 hover:bg-emerald-500/30 transition-all duration-300 flex items-center justify-center"
+                                    title="Adicionar nova categoria">
+                                <i class="bi bi-plus-circle text-lg"></i>
+                            </button>
+                        </div>
+                        <small class="text-white/60 text-xs flex items-center gap-1">
+                            <i class="bi bi-info-circle"></i>
+                            Selecione uma categoria existente ou crie uma nova
+                        </small>
                         @error('category')
                             <p class="text-red-300 text-sm flex items-center gap-1">
                                 <i class="bi bi-exclamation-circle"></i> {{ $message }}
@@ -274,6 +285,128 @@
 
 <script>
 let variantCount = 1;
+
+// Carregar categorias no select
+document.addEventListener('DOMContentLoaded', function() {
+    const categorySelect = document.getElementById('category');
+    const oldCategoryValue = '{{ old("category") }}';
+    
+    if (!categorySelect) {
+        console.warn('Select de categoria não encontrado');
+        return;
+    }
+    
+    // Função para carregar categorias
+    async function loadCategories() {
+        try {
+            const response = await fetch('/api/product-categories/search?q=', {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'same-origin' // Importante: envia cookies de sessão
+            });
+            
+            // Verificar se a resposta é JSON (não HTML)
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                throw new Error(`Resposta não é JSON. Tipo: ${contentType}. Status: ${response.status}`);
+            }
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('Dados recebidos da API:', data); // Debug
+            console.log('Success:', data.success); // Debug
+            console.log('Categorias array:', Array.isArray(data.categories)); // Debug
+            console.log('Quantidade de categorias:', data.categories?.length || 0); // Debug
+            
+            // Limpar opções existentes
+            categorySelect.innerHTML = '<option value="">Selecione uma categoria...</option>';
+            
+            if (data.success && Array.isArray(data.categories) && data.categories.length > 0) {
+                console.log(`Adicionando ${data.categories.length} categorias ao select`); // Debug
+                // Adicionar categorias
+                data.categories.forEach((category, index) => {
+                    console.log(`Categoria ${index + 1}:`, category.name); // Debug
+                    const option = document.createElement('option');
+                    option.value = category.name;
+                    option.textContent = category.name;
+                    if (category.usage_count > 0) {
+                        option.textContent += ` (${category.usage_count} produtos)`;
+                    }
+                    
+                    // Selecionar se for o valor antigo (old)
+                    if (oldCategoryValue && category.name === oldCategoryValue) {
+                        option.selected = true;
+                    }
+                    
+                    categorySelect.appendChild(option);
+                });
+                console.log(`Total de opções no select: ${categorySelect.options.length}`); // Debug
+            } else {
+                // Se não houver categorias, mostrar mensagem
+                const noCategoryOption = document.createElement('option');
+                noCategoryOption.value = '';
+                noCategoryOption.textContent = 'Nenhuma categoria cadastrada - Clique em + para criar';
+                noCategoryOption.disabled = true;
+                categorySelect.appendChild(noCategoryOption);
+            }
+        } catch (error) {
+            console.error('Erro ao carregar categorias:', error);
+            const errorOption = document.createElement('option');
+            errorOption.value = '';
+            errorOption.textContent = 'Erro ao carregar categorias';
+            errorOption.disabled = true;
+            categorySelect.innerHTML = '';
+            categorySelect.appendChild(errorOption);
+        }
+    }
+    
+    // Carregar categorias ao carregar a página
+    loadCategories();
+    
+    // Expor função para recarregar após criar categoria
+    window.reloadCategories = function() {
+        console.log('Recarregando categorias...'); // Debug
+        loadCategories();
+    };
+    
+    // Função para migrar categorias manualmente (pode ser chamada por botão se necessário)
+    window.migrateCategories = async function() {
+        try {
+            const migrateResponse = await fetch('/api/product-categories/migrate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || 
+                                   document.querySelector('input[name="_token"]')?.value || ''
+                },
+                credentials: 'same-origin' // Importante: envia cookies de sessão
+            });
+            
+            if (migrateResponse.ok) {
+                const migrateData = await migrateResponse.json();
+                console.log('Migração concluída:', migrateData); // Debug
+                if (migrateData.success) {
+                    // Recarregar categorias após migração
+                    setTimeout(() => {
+                        loadCategories();
+                    }, 500);
+                    return true;
+                }
+            }
+            return false;
+        } catch (error) {
+            console.error('Erro ao migrar categorias:', error);
+            return false;
+        }
+    };
+});
 
 function addVariant() {
     const container = document.getElementById('variants-container');
@@ -744,5 +877,83 @@ label {
        .hidden {
            display: none !important;
        }
+       
+       /* Autocomplete Styles */
+       #category-autocomplete-wrapper {
+           position: relative;
+           z-index: 10;
+       }
+       
+       .category-suggestions {
+           position: absolute;
+           top: 100%;
+           left: 0;
+           right: 0;
+           margin-top: 0.25rem;
+           background: rgba(26, 26, 46, 0.98);
+           border: 1px solid rgba(255, 255, 255, 0.2);
+           border-radius: 8px;
+           max-height: 300px;
+           overflow-y: auto;
+           z-index: 10000 !important;
+           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+           backdrop-filter: blur(20px);
+           display: block !important;
+           opacity: 1 !important;
+           visibility: visible !important;
+       }
+       
+       .category-suggestions.hidden {
+           display: none !important;
+           opacity: 0 !important;
+           visibility: hidden !important;
+       }
+       
+       .suggestion-item {
+           padding: 0.75rem 1rem;
+           cursor: pointer;
+           transition: all 0.2s ease;
+           border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+       }
+       
+       .suggestion-item:last-child {
+           border-bottom: none;
+       }
+       
+       .suggestion-item:hover,
+       .suggestion-item.selected {
+           background: rgba(16, 185, 129, 0.2);
+           border-left: 3px solid #10b981;
+       }
+       
+       .suggestion-name {
+           color: rgba(255, 255, 255, 0.9);
+           font-weight: 500;
+       }
+       
+       .suggestion-name strong {
+           color: #10b981;
+           font-weight: 700;
+       }
+       
+       .suggestion-count {
+           color: rgba(255, 255, 255, 0.5);
+           font-size: 0.75rem;
+       }
+       
+       .suggestion-create {
+           background: rgba(16, 185, 129, 0.1);
+           border-top: 2px solid rgba(16, 185, 129, 0.3);
+       }
+       
+       .suggestion-create:hover {
+           background: rgba(16, 185, 129, 0.3);
+       }
+       
+       .suggestion-create i {
+           color: #10b981;
+       }
        </style>
+
+@include('components.category-modal')
 @endsection

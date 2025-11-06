@@ -6,6 +6,7 @@ use App\Http\Controllers\ProductController;
 use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\CashFlowController;
 use App\Http\Controllers\FinancialScheduleController;
+use App\Http\Controllers\ProductCategoryController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -36,4 +37,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/schedules', [FinancialScheduleController::class, 'apiStore'])->name('api.schedules.store');
     Route::put('/schedules/{schedule}', [FinancialScheduleController::class, 'apiUpdate'])->name('api.schedules.update');
     Route::delete('/schedules/{schedule}', [FinancialScheduleController::class, 'apiDestroy'])->name('api.schedules.destroy');
+    
+    // Categorias de Produtos
+    Route::get('/product-categories', [ProductCategoryController::class, 'index'])->name('api.product-categories.index');
+    Route::get('/product-categories/search', [ProductCategoryController::class, 'search'])->name('api.product-categories.search');
+    Route::post('/product-categories/find-or-create', [ProductCategoryController::class, 'findOrCreate'])->name('api.product-categories.find-or-create');
+    Route::post('/product-categories/migrate', [ProductCategoryController::class, 'migrateExistingCategories'])->name('api.product-categories.migrate');
 });

@@ -84,7 +84,14 @@
                 <h3 class="schedule-column-title">
                     <i class="bi bi-arrow-up-circle text-danger"></i> Saídas
                 </h3>
-                <span class="schedule-column-count">{{ $expenses->count() }}</span>
+                <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+                    <span class="schedule-column-count">{{ $expenses->count() }}</span>
+                    @if($expensesPaidCount > 0)
+                    <span class="schedule-column-count-paid">
+                        {{ $expensesPaidCount }} paga{{ $expensesPaidCount > 1 ? 's' : '' }}
+                    </span>
+                    @endif
+                </div>
             </div>
             
             @if($expenses->count() > 0)
@@ -207,6 +214,27 @@
         border-radius: 20px;
         font-size: 0.875rem;
         font-weight: 600;
+    }
+    
+    .schedule-column-count-paid {
+        background: rgba(16, 185, 129, 0.25);
+        color: #10b981;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.875rem;
+        font-weight: 600;
+        border: 1px solid rgba(16, 185, 129, 0.5);
+        box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+        animation: greenBadgeGlow 2s ease-in-out infinite;
+    }
+    
+    @keyframes greenBadgeGlow {
+        0%, 100% {
+            box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+        }
+        50% {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.5);
+        }
     }
     
     .no-schedules-message {
@@ -908,6 +936,108 @@
         .premium-content .schedule-column-header {
             margin-bottom: 6px;
             padding-bottom: 4px;
+        }
+    }
+    
+    /* ============ EFEITOS VERDES PARA SAÍDAS PAGAS ============ */
+    
+    /* Card de saída paga - efeito premium */
+    .schedule-card-paid {
+        position: relative;
+        overflow: visible !important;
+        border: 2px solid rgba(16, 185, 129, 0.3) !important;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.05) 0%, rgba(16, 185, 129, 0.02) 100%) !important;
+        box-shadow: 0 0 20px rgba(16, 185, 129, 0.2), 0 0 40px rgba(16, 185, 129, 0.1) !important;
+    }
+    
+    /* Animação verde circulando - efeito premium */
+    .schedule-card-paid::before {
+        content: '';
+        position: absolute;
+        top: -2px;
+        left: -2px;
+        right: -2px;
+        bottom: -2px;
+        border-radius: 14px;
+        background: linear-gradient(45deg, 
+            rgba(16, 185, 129, 0.8), 
+            rgba(5, 150, 105, 0.8), 
+            rgba(16, 185, 129, 0.8),
+            rgba(5, 150, 105, 0.8));
+        background-size: 400% 400%;
+        z-index: -1;
+        animation: greenGlowRotate 3s ease infinite;
+        opacity: 0.6;
+    }
+    
+    /* Segundo círculo de animação para efeito mais premium */
+    .schedule-card-paid::after {
+        content: '';
+        position: absolute;
+        top: -3px;
+        left: -3px;
+        right: -3px;
+        bottom: -3px;
+        border-radius: 15px;
+        background: linear-gradient(135deg, 
+            rgba(16, 185, 129, 0.4), 
+            rgba(5, 150, 105, 0.4), 
+            rgba(16, 185, 129, 0.4),
+            rgba(5, 150, 105, 0.4));
+        background-size: 300% 300%;
+        z-index: -2;
+        animation: greenGlowPulse 2.5s ease-in-out infinite;
+        opacity: 0.4;
+    }
+    
+    /* Animação de rotação do gradiente verde */
+    @keyframes greenGlowRotate {
+        0% {
+            background-position: 0% 50%;
+        }
+        50% {
+            background-position: 100% 50%;
+        }
+        100% {
+            background-position: 0% 50%;
+        }
+    }
+    
+    /* Animação de pulso verde */
+    @keyframes greenGlowPulse {
+        0%, 100% {
+            opacity: 0.4;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 0.7;
+            transform: scale(1.02);
+        }
+    }
+    
+    /* Efeito de brilho interno */
+    .schedule-card-paid .schedule-card-content {
+        position: relative;
+        z-index: 1;
+    }
+    
+    
+    /* Responsivo - ajustar efeitos em telas menores */
+    @media (max-width: 768px) {
+        .schedule-card-paid::before,
+        .schedule-card-paid::after {
+            border-radius: 12px;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .schedule-card-paid {
+            border-width: 1.5px !important;
+        }
+        
+        .schedule-card-paid::before,
+        .schedule-card-paid::after {
+            border-radius: 10px;
         }
     }
 </style>

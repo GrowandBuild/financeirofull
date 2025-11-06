@@ -96,6 +96,18 @@ class ProductModalManager {
             priceInput.addEventListener('input', () => this.updateTotal());
         }
         
+        // Unidade - mostrar/esconder campo de subquantidade
+        const unitSelect = document.getElementById('unitSelect');
+        if (unitSelect) {
+            unitSelect.addEventListener('change', () => this.updateSubquantityVisibility());
+        }
+        
+        // Subquantidade
+        const subquantityInput = document.getElementById('subquantityInput');
+        if (subquantityInput) {
+            subquantityInput.addEventListener('input', () => this.updateTotal());
+        }
+        
         // Adicionar ao carrinho
         const addBtn = document.getElementById('addToCartBtn');
         if (addBtn) {
@@ -186,6 +198,9 @@ class ProductModalManager {
         
         // Resetar valores
         this.resetValues();
+        
+        // Atualizar visibilidade do campo de subquantidade
+        this.updateSubquantityVisibility();
         
         // Mostrar modal
         this.show();
@@ -324,6 +339,7 @@ class ProductModalManager {
         const quantityInput = document.getElementById('modalQuantity');
         const priceInput = document.getElementById('modalPrice');
         const unitSelect = document.getElementById('unitSelect');
+        const subquantityInput = document.getElementById('subquantityInput');
         
         if (quantityInput) {
             quantityInput.value = 1;
@@ -337,7 +353,58 @@ class ProductModalManager {
             unitSelect.selectedIndex = 0;
         }
         
+        if (subquantityInput) {
+            subquantityInput.value = '';
+        }
+        
+        this.updateSubquantityVisibility();
         this.updateTotal();
+    }
+    
+    updateSubquantityVisibility() {
+        const unitSelect = document.getElementById('unitSelect');
+        const subquantityField = document.getElementById('subquantityField');
+        const subquantityLabel = document.getElementById('subquantityLabel');
+        const subquantityHelp = document.getElementById('subquantityHelp');
+        const subquantityInput = document.getElementById('subquantityInput');
+        
+        if (!unitSelect || !subquantityField) return;
+        
+        const selectedUnit = unitSelect.value.toLowerCase().trim();
+        
+        // Unidades que precisam de subquantidade
+        const unitsWithSubquantity = {
+            'g': { label: 'Quantidade em gramas', help: 'Digite a quantidade em gramas (ex: 500 para 500g)', placeholder: 'Ex: 500' },
+            'grama': { label: 'Quantidade em gramas', help: 'Digite a quantidade em gramas (ex: 500 para 500g)', placeholder: 'Ex: 500' },
+            'ml': { label: 'Quantidade em mililitros', help: 'Digite a quantidade em mililitros (ex: 250 para 250ml)', placeholder: 'Ex: 250' },
+            'mililitro': { label: 'Quantidade em mililitros', help: 'Digite a quantidade em mililitros (ex: 250 para 250ml)', placeholder: 'Ex: 250' },
+            'kg': { label: 'Quantidade em gramas', help: 'Digite a quantidade em gramas para converter (ex: 1500 para 1,5kg)', placeholder: 'Ex: 1500' },
+            'quilograma': { label: 'Quantidade em gramas', help: 'Digite a quantidade em gramas para converter (ex: 1500 para 1,5kg)', placeholder: 'Ex: 1500' },
+            'l': { label: 'Quantidade em mililitros', help: 'Digite a quantidade em mililitros para converter (ex: 1000 para 1L)', placeholder: 'Ex: 1000' },
+            'litro': { label: 'Quantidade em mililitros', help: 'Digite a quantidade em mililitros para converter (ex: 1000 para 1L)', placeholder: 'Ex: 1000' }
+        };
+        
+        const unitConfig = unitsWithSubquantity[selectedUnit];
+        
+        if (unitConfig) {
+            subquantityField.style.display = 'block';
+            if (subquantityLabel) {
+                subquantityLabel.textContent = unitConfig.label;
+            }
+            if (subquantityHelp) {
+                subquantityHelp.textContent = unitConfig.help;
+            }
+            if (subquantityInput) {
+                subquantityInput.placeholder = unitConfig.placeholder;
+                subquantityInput.required = true;
+            }
+        } else {
+            subquantityField.style.display = 'none';
+            if (subquantityInput) {
+                subquantityInput.value = '';
+                subquantityInput.required = false;
+            }
+        }
     }
     
     decreaseQuantity() {
@@ -386,6 +453,8 @@ class ProductModalManager {
         const quantityInput = document.getElementById('modalQuantity');
         const priceInput = document.getElementById('modalPrice');
         const variantSelect = document.getElementById('variantSelect');
+        const subquantityInput = document.getElementById('subquantityInput');
+        const subquantityField = document.getElementById('subquantityField');
         
         // Validação
         if (!unitSelect || !unitSelect.value || unitSelect.value === '') {
@@ -400,10 +469,21 @@ class ProductModalManager {
             return;
         }
         
+        // Verificar se precisa de subquantidade e se foi preenchida
+        const needsSubquantity = subquantityField && subquantityField.style.display !== 'none';
+        if (needsSubquantity) {
+            if (!subquantityInput || !subquantityInput.value || parseFloat(subquantityInput.value.replace(',', '.')) <= 0) {
+                alert('Por favor, informe a quantidade em ' + (unitSelect.value.toLowerCase() === 'g' || unitSelect.value.toLowerCase() === 'grama' ? 'gramas' : 'mililitros') + '.');
+                subquantityInput.focus();
+                return;
+            }
+        }
+        
         const quantity = parseFloat(quantityInput.value) || 1;
         const price = parseFloat(priceInput.value.replace(',', '.')) || 0;
         const unit = unitSelect.value;
         const variant = variantSelect?.value || '';
+        const subquantity = needsSubquantity ? parseFloat(subquantityInput.value.replace(',', '.')) : null;
         
         // Chamar função global addToCart se existir
         if (typeof window.addToCartFromModal === 'function') {
@@ -414,6 +494,7 @@ class ProductModalManager {
                 variant: variant,
                 unit: unit,
                 quantity: quantity,
+                subquantity: subquantity,
                 price: price
             });
         } else {

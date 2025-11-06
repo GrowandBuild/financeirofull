@@ -1,4 +1,4 @@
-<div class="premium-product-card schedule-card" style="margin-bottom: 15px;">
+<div class="premium-product-card schedule-card @if($schedule->type === 'expense' && $schedule->is_confirmed) schedule-card-paid @endif" style="margin-bottom: 15px;">
     <div class="schedule-card-content">
         <!-- Imagem se houver -->
         @if($schedule->image_path)

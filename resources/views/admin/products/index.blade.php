@@ -16,6 +16,9 @@
                     </div>
                 </div>
                 <div class="header-actions">
+                    <a href="{{ route('admin.product-categories.index') }}" class="action-btn" title="Gerenciar Categorias">
+                        <i class="bi bi-tags"></i>
+                    </a>
                     <a href="{{ route('admin.reset.index') }}" class="action-btn danger" title="⚠️ RESET PERIGOSO - Apaga TUDO!">
                         <i class="bi bi-exclamation-triangle-fill"></i>
                     </a>
@@ -79,17 +82,17 @@
         </div>
 
         <!-- Action Bar -->
-        <div class="chart-section mb-6" style="max-width: 100%; overflow-x: hidden; word-wrap: break-word; box-sizing: border-box;">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4" style="flex-wrap: wrap; width: 100%; box-sizing: border-box;">
-                <div style="flex: 1; min-width: 0; word-wrap: break-word; box-sizing: border-box;">
-                    <h3 class="section-title" style="margin: 0; padding: 0;">
-                        <i class="bi bi-list-ul"></i>
+        <div class="product-list-section mb-6">
+            <div class="section-header">
+                <div class="section-title-wrapper">
+                    <h3 class="section-title">
+                        <i class="bi bi-grid-3x3-gap"></i>
                         Lista de Produtos
                     </h3>
-                    <p class="text-white/60 text-sm mt-1" style="word-wrap: break-word; margin-top: 0.25rem;">Gerencie todos os seus produtos</p>
+                    <p class="section-subtitle">Gerencie todos os seus produtos</p>
                 </div>
-                <div class="flex gap-2" style="flex-wrap: wrap;">
-                    <a href="{{ route('admin.products.create') }}" class="premium-btn primary">
+                <div class="filter-section">
+                    <a href="{{ route('admin.products.create') }}" class="premium-btn primary new-product-btn">
                         <i class="bi bi-plus-circle"></i>
                         <span class="d-none d-sm-inline">Novo Produto</span>
                         <span class="d-sm-none">Novo</span>
@@ -104,38 +107,58 @@
         </div>
 
         <!-- Products Grid -->
-        <div class="premium-product-grid">
+        <div class="premium-product-grid" id="productGrid">
             @forelse($products as $product)
-                <div class="premium-product-card group">
+                <div class="premium-product-card admin-product-card">
                     <div class="premium-product-image">
                         @if($product->image || $product->image_path)
-                            <img src="{{ $product->image_url }}" alt="{{ $product->name }}">
-                            <div class="product-overlay">
-                                <i class="bi bi-eye"></i>
-                            </div>
+                            <img src="{{ $product->image_url ?? asset('images/no-image.png') }}" 
+                                 alt="{{ $product->name }}"
+                                 onerror="this.onerror=null; this.src='{{ asset('images/no-image.png') }}';">
                         @else
                             <div class="product-icon">
                                 <i class="bi bi-box"></i>
                             </div>
                         @endif
                         @if($product->has_variants)
-                            <div class="category-badge">
+                            <a href="{{ route('admin.products.show', $product) }}" class="variants-btn" title="Ver Variantes">
                                 <i class="bi bi-layers"></i>
-                                Variantes
-                            </div>
+                                <span>Variantes</span>
+                            </a>
                         @endif
+                        <div class="product-overlay">
+                            <div class="overlay-actions">
+                                <a href="{{ route('admin.products.show', $product) }}" 
+                                   class="overlay-action-btn" title="Ver detalhes">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ route('admin.products.edit', $product) }}" 
+                                   class="overlay-action-btn edit" title="Editar produto">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <form action="{{ route('admin.products.destroy', $product) }}" 
+                                      method="POST" 
+                                      class="inline delete-form"
+                                      onsubmit="return confirm('Tem certeza que deseja excluir este produto?')">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" 
+                                            class="overlay-action-btn delete" title="Excluir produto">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="premium-product-info">
-                        <div class="premium-product-name">{{ $product->name }}</div>
+                        <h5 class="premium-product-name">{{ $product->name }}</h5>
                         <div class="premium-product-category">
-                            <i class="bi bi-tag"></i>
-                            {{ $product->category ?: 'Sem categoria' }} • {{ $product->unit }}
+                            {{ $product->category ?: 'Sem categoria' }}
                         </div>
                         
                         @if($product->last_price > 0)
                             <div class="premium-product-price">
-                                <i class="bi bi-currency-dollar"></i>
                                 R$ {{ number_format($product->last_price, 2, ',', '.') }}
                             </div>
                         @endif
@@ -152,32 +175,6 @@
                                 </div>
                             </div>
                         @endif
-                    </div>
-
-                    <!-- Action Buttons -->
-                    <div class="product-actions">
-                        <a href="{{ route('admin.products.show', $product) }}" 
-                           class="premium-btn outline" title="Ver detalhes">
-                            <i class="bi bi-eye"></i>
-                            <span class="btn-text">Ver</span>
-                        </a>
-                        <a href="{{ route('admin.products.edit', $product) }}" 
-                           class="premium-btn secondary" title="Editar produto">
-                            <i class="bi bi-pencil"></i>
-                            <span class="btn-text">Editar</span>
-                        </a>
-                        <form action="{{ route('admin.products.destroy', $product) }}" 
-                              method="POST" 
-                              class="inline delete-form"
-                              onsubmit="return confirm('Tem certeza que deseja excluir este produto?')">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" 
-                                    class="premium-btn danger" title="Excluir produto">
-                                <i class="bi bi-trash"></i>
-                                <span class="btn-text">Excluir</span>
-                            </button>
-                        </form>
                     </div>
                 </div>
             @empty
@@ -212,10 +209,90 @@
 
 <style>
 /* Admin specific styles */
-.chart-section {
-    width: 100%;
-    box-sizing: border-box;
-    overflow-x: hidden;
+.product-list-section {
+    margin-bottom: 1.5rem;
+}
+
+.section-header {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.section-title-wrapper {
+    flex: 1;
+    min-width: 0;
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: white;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.section-title i {
+    color: #10b981;
+    font-size: 1.5rem;
+}
+
+.section-subtitle {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.875rem;
+    margin: 0.25rem 0 0 0;
+    display: block;
+}
+
+.filter-section {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .section-header {
+        flex-direction: column;
+    }
+    
+    .filter-section {
+        width: 100%;
+        justify-content: flex-start;
+    }
+    
+    .new-product-btn,
+    .premium-btn {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+.new-product-btn {
+    background: linear-gradient(135deg, #10b981, #059669) !important;
+    border: none !important;
+    color: white !important;
+    padding: 0.75rem 1.5rem !important;
+    border-radius: 12px !important;
+    font-weight: 600 !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    transition: all 0.3s ease !important;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3) !important;
+}
+
+.new-product-btn:hover {
+    background: linear-gradient(135deg, #059669, #047857) !important;
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4) !important;
+    color: white !important;
 }
 
 .stats-grid {
@@ -229,57 +306,61 @@
 
 .premium-product-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
     gap: 1.5rem;
     width: 100%;
     box-sizing: border-box;
     overflow: visible;
 }
 
-.premium-product-card {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0.05) 100%);
-    border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+.admin-product-card {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%);
+    border-radius: 16px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    grid-template-rows: auto 1fr;
-    gap: 1rem;
-    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
     text-decoration: none;
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    overflow: visible;
+    overflow: hidden;
     word-wrap: break-word;
     overflow-wrap: break-word;
     box-sizing: border-box;
-    align-items: start;
     position: relative;
+    cursor: pointer;
 }
 
-.premium-product-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-    border-color: rgba(16, 185, 129, 0.3);
+.admin-product-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+    border-color: rgba(16, 185, 129, 0.4);
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%);
 }
 
 .premium-product-image {
     position: relative;
-    width: 100px;
-    height: 100px;
-    min-width: 100px;
+    width: 100%;
+    aspect-ratio: 1;
+    min-height: 200px;
     flex-shrink: 0;
-    border-radius: 12px;
+    border-radius: 0;
     overflow: hidden;
-    grid-row: 1 / -1;
+    background: rgba(255, 255, 255, 0.05);
 }
 
 .premium-product-image img {
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.admin-product-card:hover .premium-product-image img {
+    transform: scale(1.05);
 }
 
 .product-icon {
@@ -290,7 +371,7 @@
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 2rem;
+    font-size: 3rem;
 }
 
 .product-overlay {
@@ -299,21 +380,102 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.3), rgba(0, 0, 0, 0.7));
     display: flex;
     align-items: center;
     justify-content: center;
     opacity: 0;
     transition: all 0.3s ease;
+    backdrop-filter: blur(2px);
 }
 
-.premium-product-card:hover .product-overlay {
+.admin-product-card:hover .product-overlay {
     opacity: 1;
 }
 
-.product-overlay i {
+.overlay-actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    justify-content: center;
+}
+
+.overlay-action-btn {
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
     color: white;
-    font-size: 1.5rem;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.overlay-action-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: scale(1.1);
+    color: white;
+}
+
+.overlay-action-btn.edit {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.overlay-action-btn.edit:hover {
+    background: rgba(59, 130, 246, 0.5);
+    border-color: rgba(59, 130, 246, 0.7);
+}
+
+.overlay-action-btn.delete {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.overlay-action-btn.delete:hover {
+    background: rgba(239, 68, 68, 0.5);
+    border-color: rgba(239, 68, 68, 0.7);
+}
+
+.overlay-action-btn i {
+    font-size: 1.25rem;
+}
+
+.variants-btn {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    transition: all 0.3s ease;
+    z-index: 10;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+.variants-btn:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.5);
+    color: white;
+}
+
+.variants-btn i {
+    font-size: 0.875rem;
 }
 
 .premium-product-info {
@@ -323,91 +485,36 @@
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    padding: 1rem;
     overflow: hidden;
 }
 
-.product-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    min-width: 110px;
-    max-width: 140px;
-    grid-row: 1 / -1;
-    align-self: start;
-    flex-shrink: 0;
-    overflow: visible;
-}
-
-.product-actions .premium-btn {
-    padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
-    width: 100%;
-    min-width: 0;
-    text-align: center;
-    justify-content: center;
-    white-space: nowrap;
-    overflow: visible;
-    text-overflow: ellipsis;
-}
-
-.product-actions .premium-btn .btn-text {
-    display: inline-block;
-    white-space: nowrap;
-    overflow: visible;
-    text-overflow: clip;
-}
-
-@media (max-width: 640px) {
-    .product-actions .premium-btn .btn-text {
-        display: none;
-    }
-    
-    .product-actions .premium-btn {
-        min-width: 2.5rem;
-        width: auto;
-        padding: 0.5rem;
-    }
-}
-
-.premium-btn.danger {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.2));
-    color: #fca5a5;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-.premium-btn.danger:hover {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(220, 38, 38, 0.3));
-    color: #fee2e2;
-    border-color: rgba(239, 68, 68, 0.5);
-}
-
 .delete-form {
-    width: 100%;
     margin: 0;
+    display: inline-block;
 }
 
 .delete-form button {
-    width: 100%;
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: 0;
 }
 
 .premium-product-name {
     color: white;
     font-size: 1.125rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    margin: 0;
     line-height: 1.3;
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
 
 .premium-product-category {
-    color: #9ca3af;
+    color: rgba(255, 255, 255, 0.6);
     font-size: 0.875rem;
-    margin-bottom: 0.5rem;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    flex-wrap: wrap;
+    margin: 0;
     word-wrap: break-word;
     overflow-wrap: break-word;
 }
@@ -416,25 +523,7 @@
     color: #10b981;
     font-size: 1rem;
     font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-    margin-bottom: 0.5rem;
-}
-
-.category-badge {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    background: rgba(16, 185, 129, 0.9);
-    color: white;
-    padding: 0.25rem 0.5rem;
-    border-radius: 6px;
-    font-size: 0.625rem;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
+    margin-top: 0.25rem;
 }
 
 .product-stats {
@@ -516,43 +605,22 @@
 
 @media (max-width: 768px) {
     .premium-product-grid {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         gap: 1rem;
         width: 100%;
     }
     
-    .premium-product-card {
-        grid-template-columns: 80px 1fr;
-        grid-template-rows: auto auto;
-        padding: 1rem !important;
-        gap: 0.75rem !important;
+    .admin-product-card {
         width: 100%;
         max-width: 100%;
     }
     
     .premium-product-image {
-        width: 80px;
-        height: 80px;
-        grid-row: 1 / 2;
+        min-height: 150px;
     }
     
     .premium-product-info {
-        grid-column: 2 / -1;
-        grid-row: 1 / 2;
-    }
-    
-    .product-actions {
-        grid-column: 1 / -1;
-        grid-row: 2 / -1;
-        flex-direction: row;
-        gap: 0.5rem;
-        width: 100%;
-        margin-top: 0.5rem;
-    }
-    
-    .product-actions .premium-btn {
-        flex: 1;
-        min-width: 0;
+        padding: 0.75rem;
     }
     
     .stats-grid {
@@ -560,11 +628,22 @@
         gap: 0.75rem;
     }
     
-    .premium-product-name,
-    .premium-product-category,
-    .premium-product-price {
-        word-wrap: break-word;
-        overflow-wrap: break-word;
+    .overlay-actions {
+        gap: 0.5rem;
+    }
+    
+    .overlay-action-btn {
+        width: 40px;
+        height: 40px;
+    }
+    
+    .overlay-action-btn i {
+        font-size: 1rem;
+    }
+    
+    .variants-btn {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.625rem;
     }
     
     .chart-section {
@@ -588,22 +667,26 @@
         gap: 0.75rem;
     }
     
-    .premium-product-card {
-        grid-template-columns: 60px 1fr;
-        padding: 0.875rem !important;
+    .premium-product-grid {
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 0.75rem;
+    }
+    
+    .admin-product-card {
+        width: 100%;
+        max-width: 100%;
     }
     
     .premium-product-image {
-        width: 60px;
-        height: 60px;
+        min-height: 140px;
     }
     
-    .product-actions {
-        flex-direction: column;
+    .premium-product-info {
+        padding: 0.625rem;
     }
     
-    .product-actions .premium-btn {
-        width: 100%;
+    .premium-product-name {
+        font-size: 1rem;
     }
     
     .header-actions {
@@ -619,12 +702,12 @@
 
 @media (min-width: 1200px) {
     .premium-product-grid {
-        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
         gap: 1.5rem;
         width: 100%;
     }
     
-    .premium-product-card {
+    .admin-product-card {
         width: 100%;
         max-width: 100%;
     }

@@ -14,9 +14,19 @@ class GoalController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
+        
+        // Obter mês e ano da requisição, ou usar o mês atual
+        $month = $request->get('month', now()->month);
+        $year = $request->get('year', now()->year);
+        
+        // Validar mês e ano
+        $month = max(1, min(12, (int)$month));
+        $year = max(2020, min(2100, (int)$year));
+        
+        $selectedDate = Carbon::create($year, $month, 1);
         
         $goals = Goal::where('user_id', $user->id)
             ->with('user')
@@ -30,9 +40,12 @@ class GoalController extends Controller
         }
         
         // Calcular dados do default (40/10/30/10/10) para exibição
-        $defaultGoalData = $this->calculateDefaultGoalProgress($user->id);
+        $defaultGoalData = $this->calculateDefaultGoalProgress($user->id, $selectedDate);
         
-        return view('goals.index', compact('goals', 'goalsData', 'defaultGoalData'));
+        // Obter meses disponíveis (com dados)
+        $availableMonths = $this->getAvailableMonths($user->id);
+        
+        return view('goals.index', compact('goals', 'goalsData', 'defaultGoalData', 'selectedDate', 'availableMonths'));
     }
 
     /**
@@ -227,10 +240,14 @@ class GoalController extends Controller
     /**
      * Calcular progresso do objetivo padrão (40/10/30/10/10)
      */
-    private function calculateDefaultGoalProgress($userId)
+    private function calculateDefaultGoalProgress($userId, $selectedDate = null)
     {
-        $startDate = now()->startOfMonth();
-        $endDate = now()->endOfMonth();
+        if ($selectedDate === null) {
+            $selectedDate = now();
+        }
+        
+        $startDate = $selectedDate->copy()->startOfMonth();
+        $endDate = $selectedDate->copy()->endOfMonth();
         
         // Distribuição padrão fixa
         $defaultDistribution = [
@@ -272,11 +289,15 @@ class GoalController extends Controller
             // Valor disponível baseado no saldo e percentual
             $availableAmount = ($totalBalance * $percentage) / 100;
             
+            // Valor que deveria ser gasto baseado na renda mensal total atual
+            $expectedMonthlyAmount = ($actualIncome * $percentage) / 100;
+            
             $progressData[$key] = [
                 'label' => $this->getCategoryLabel($key),
                 'percentage' => $percentage,
                 'actual_amount' => $actualAmount,
-                'available_amount' => $availableAmount
+                'available_amount' => $availableAmount,
+                'expected_monthly_amount' => $expectedMonthlyAmount
             ];
         }
         
@@ -284,8 +305,37 @@ class GoalController extends Controller
             'total_income' => $actualIncome,
             'total_expenses' => $actualExpenses,
             'total_balance' => $totalBalance,
-            'distribution' => $progressData
+            'distribution' => $progressData,
+            'month' => $startDate->month,
+            'year' => $startDate->year
         ];
+    }
+
+    /**
+     * Obter meses disponíveis com dados
+     */
+    private function getAvailableMonths($userId)
+    {
+        $monthNames = [
+            1 => 'Janeiro', 2 => 'Fevereiro', 3 => 'Março', 4 => 'Abril',
+            5 => 'Maio', 6 => 'Junho', 7 => 'Julho', 8 => 'Agosto',
+            9 => 'Setembro', 10 => 'Outubro', 11 => 'Novembro', 12 => 'Dezembro'
+        ];
+        
+        $months = CashFlow::where('user_id', $userId)
+            ->selectRaw('YEAR(transaction_date) as year, MONTH(transaction_date) as month')
+            ->groupByRaw('YEAR(transaction_date), MONTH(transaction_date)')
+            ->orderByRaw('YEAR(transaction_date) DESC, MONTH(transaction_date) DESC')
+            ->get()
+            ->map(function ($item) use ($monthNames) {
+                return [
+                    'year' => (int)$item->year,
+                    'month' => (int)$item->month,
+                    'label' => $monthNames[(int)$item->month] . '/' . $item->year
+                ];
+            });
+        
+        return $months;
     }
 
     /**
@@ -306,5 +356,83 @@ class GoalController extends Controller
         ];
         
         return $labels[$key] ?? ucfirst(str_replace('_', ' ', $key));
+    }
+
+    /**
+     * API: Buscar despesas do mês atual
+     */
+    public function getMonthlyExpenses(Request $request)
+    {
+        $user = Auth::user();
+        $month = $request->get('month', now()->month);
+        $year = $request->get('year', now()->year);
+        
+        $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+        
+        $expenses = CashFlow::where('user_id', $user->id)
+            ->expense()
+            ->confirmed()
+            ->whereBetween('transaction_date', [$startDate, $endDate])
+            ->with('category')
+            ->orderBy('transaction_date', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($expense) {
+                return [
+                    'id' => $expense->id,
+                    'title' => $expense->title,
+                    'description' => $expense->description,
+                    'amount' => $expense->amount,
+                    'transaction_date' => $expense->transaction_date->format('d/m/Y'),
+                    'goal_category' => $expense->goal_category,
+                    'goal_category_label' => $expense->goal_category ? $this->getCategoryLabel($expense->goal_category) : null,
+                    'category_name' => $expense->category ? $expense->category->name : null,
+                    'payment_method' => $expense->payment_method_label
+                ];
+            });
+        
+        return response()->json([
+            'success' => true,
+            'expenses' => $expenses,
+            'total' => $expenses->sum('amount'),
+            'month' => $month,
+            'year' => $year
+        ]);
+    }
+
+    /**
+     * API: Atualizar departamento de uma despesa
+     */
+    public function updateExpenseDepartment(Request $request, $id)
+    {
+        $user = Auth::user();
+        
+        $expense = CashFlow::where('user_id', $user->id)
+            ->where('id', $id)
+            ->first();
+        
+        if (!$expense) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Despesa não encontrada'
+            ], 404);
+        }
+        
+        $validated = $request->validate([
+            'goal_category' => 'nullable|string|in:fixed_expenses,investments,professional_resources,emergency_reserves,long_term_savings,leisure,debt_installments,education,health'
+        ]);
+        
+        $expense->update(['goal_category' => $validated['goal_category'] ?? null]);
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Departamento atualizado com sucesso',
+            'expense' => [
+                'id' => $expense->id,
+                'goal_category' => $expense->goal_category,
+                'goal_category_label' => $expense->goal_category ? $this->getCategoryLabel($expense->goal_category) : null
+            ]
+        ]);
     }
 }

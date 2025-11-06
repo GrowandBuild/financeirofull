@@ -78,4 +78,50 @@ class Product extends Model
         
         return null;
     }
+
+    /**
+     * Boot do modelo - eventos para normalização de categorias
+     */
+    protected static function boot()
+    {
+        parent::boot();
+        
+        // Antes de salvar, normaliza a categoria
+        static::saving(function ($product) {
+            if ($product->isDirty('category')) {
+                $categoryValue = $product->category;
+                
+                if (empty($categoryValue)) {
+                    $product->attributes['category'] = null;
+                } else {
+                    // Busca ou cria a categoria normalizada
+                    $category = ProductCategory::findOrCreate($categoryValue);
+                    
+                    // Salva o nome original da categoria (para exibição)
+                    $product->attributes['category'] = $category->name;
+                    
+                    // Incrementa o contador de uso
+                    $category->incrementUsage();
+                }
+            }
+        });
+        
+        // Ao deletar, decrementa contador de uso
+        static::deleting(function ($product) {
+            if ($product->category) {
+                $category = ProductCategory::where('name', $product->category)->first();
+                if ($category) {
+                    $category->decrementUsage();
+                }
+            }
+        });
+    }
+
+    /**
+     * Relacionamento com categoria
+     */
+    public function productCategory()
+    {
+        return $this->belongsTo(ProductCategory::class, 'category', 'name');
+    }
 }

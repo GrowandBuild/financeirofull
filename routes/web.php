@@ -53,8 +53,21 @@ Route::prefix('categories')->name('categories.')->middleware('auth')->group(func
 // Rotas de Admin
 Route::prefix('admin')->name('admin.')->middleware('auth')->group(function () {
     Route::resource('products', \App\Http\Controllers\Admin\ProductController::class);
+    Route::resource('product-categories', \App\Http\Controllers\Admin\ProductCategoryController::class);
+    Route::post('product-categories/migrate', [\App\Http\Controllers\Admin\ProductCategoryController::class, 'migrate'])->name('product-categories.migrate');
     Route::get('reset', [\App\Http\Controllers\Admin\ResetController::class, 'index'])->name('reset.index');
     Route::post('reset', [\App\Http\Controllers\Admin\ResetController::class, 'reset'])->name('reset.execute');
+});
+
+// Rotas de API via Web (para usar sessão web corretamente)
+Route::middleware('auth')->group(function () {
+    Route::get('/api/product-categories/search', [\App\Http\Controllers\ProductCategoryController::class, 'search'])->name('api.product-categories.search');
+    Route::post('/api/product-categories/find-or-create', [\App\Http\Controllers\ProductCategoryController::class, 'findOrCreate'])->name('api.product-categories.find-or-create');
+    Route::post('/api/product-categories/migrate', [\App\Http\Controllers\ProductCategoryController::class, 'migrateExistingCategories'])->name('api.product-categories.migrate');
+    
+    // Rotas de despesas mensais
+    Route::get('/api/goals/monthly-expenses', [\App\Http\Controllers\GoalController::class, 'getMonthlyExpenses'])->name('api.goals.monthly-expenses');
+    Route::put('/api/expenses/{id}/department', [\App\Http\Controllers\GoalController::class, 'updateExpenseDepartment'])->name('api.expenses.update-department');
 });
 
 Route::get('/dashboard', function () {

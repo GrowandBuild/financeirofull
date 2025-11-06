@@ -166,7 +166,40 @@
                             <div class="purchase-date">{{ $purchase->purchase_date ? $purchase->purchase_date->format('d/m/Y') : 'Data não informada' }}</div>
                         </div>
                         <div class="purchase-quantity">
-                            {{ number_format($purchase->quantity ?? 1, 1, ',', '.') }} {{ $product->unit ?? 'L' }}
+                            @if($purchase->subquantity)
+                                @php
+                                    $unit = strtolower(trim($product->unit ?? 'un'));
+                                    if ($unit === 'kg' || $unit === 'quilograma') {
+                                        // Mostrar em gramas com precisão máxima - SEM ARREDONDAMENTO
+                                        // Usar o valor EXATO da subquantidade como foi salvo no banco
+                                        $subquantity = $purchase->subquantity;
+                                        // Converter para string para evitar perda de precisão
+                                        $subquantityStr = (string)$subquantity;
+                                        // Remover decimais desnecessários (.00, .0) mas manter o valor exato
+                                        $subquantityStr = preg_replace('/\.0+$/', '', $subquantityStr);
+                                        // Converter para número para formatar com separador de milhar
+                                        // Usar floor para garantir que nunca arredonde para cima
+                                        $subquantityNum = (float)$subquantityStr;
+                                        $subquantityInt = (int)floor($subquantityNum);
+                                        // Formatar com separador de milhar SEM arredondamento
+                                        // Mostrar unidade abreviada
+                                        echo number_format($subquantityInt, 0, ',', '.') . ' g';
+                                    } elseif ($unit === 'l' || $unit === 'litro') {
+                                        // Mostrar em mililitros com precisão máxima - SEM ARREDONDAMENTO
+                                        $subquantity = $purchase->subquantity;
+                                        $subquantityStr = (string)$subquantity;
+                                        $subquantityStr = preg_replace('/\.0+$/', '', $subquantityStr);
+                                        $subquantityNum = (float)$subquantityStr;
+                                        $subquantityInt = (int)floor($subquantityNum);
+                                        echo number_format($subquantityInt, 0, ',', '.') . ' ml';
+                                    } else {
+                                        // Para outras unidades, mostrar quantidade normal com unidade abreviada
+                                        echo number_format($purchase->quantity ?? 1, 1, ',', '.') . ' ' . ($product->unit ?? 'un');
+                                    }
+                                @endphp
+                            @else
+                                {{ number_format($purchase->quantity ?? 1, 1, ',', '.') }} {{ $product->unit ?? 'un' }}
+                            @endif
                         </div>
                         <div class="purchase-price">
                             <div class="price-value">R$ {{ number_format($purchase->price ?? 0, 2, ',', '.') }}</div>

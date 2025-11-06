@@ -58,39 +58,36 @@
         $hasQuery = !empty($query ?? '');
         $hasCategory = !empty($category ?? '');
         $hasProducts = isset($products) && $products->count() > 0;
+        // Mostrar produtos se houver resultados ou se não houver query (mostrar todos)
+        $shouldShowProducts = $hasProducts || (!$hasQuery && !$hasCategory && isset($products) && $products->count() > 0);
     @endphp
 
-    @if($hasQuery || $hasCategory)
-        <div class="results-header">
-            <div class="results-info">
-                <h3 class="results-title">
-                    @if($hasProducts)
+    @if($shouldShowProducts)
+        @if($hasQuery || $hasCategory)
+            <div class="results-header">
+                <div class="results-info">
+                    <h3 class="results-title">
                         <i class="bi bi-check-circle text-success"></i>
                         {{ $products->count() }} produto(s) encontrado(s)
-                    @else
-                        <i class="bi bi-exclamation-circle text-warning"></i>
-                        Nenhum produto encontrado
+                    </h3>
+                    @if($hasQuery)
+                        <div class="search-term">
+                            Busca por: <span class="highlight">"{{ $query }}"</span>
+                        </div>
                     @endif
-                </h3>
-                @if($hasQuery)
-                    <div class="search-term">
-                        Busca por: <span class="highlight">"{{ $query }}"</span>
-                    </div>
-                @endif
-                @if($hasCategory)
-                    <div class="filter-term">
-                        Categoria: <span class="highlight">{{ $category }}</span>
-                    </div>
-                @endif
+                    @if($hasCategory)
+                        <div class="filter-term">
+                            Categoria: <span class="highlight">{{ $category }}</span>
+                        </div>
+                    @endif
+                </div>
+                <button onclick="clearSearch()" class="clear-search-btn">
+                    <i class="bi bi-x"></i>
+                    <span>Limpar</span>
+                </button>
             </div>
-            <button onclick="clearSearch()" class="clear-search-btn">
-                <i class="bi bi-x"></i>
-                <span>Limpar</span>
-            </button>
-        </div>
-    @endif
-
-    @if($hasProducts)
+        @endif
+        
         <!-- Premium Product Grid -->
         <div class="premium-product-grid search-grid">
             @foreach($products as $product)
@@ -406,36 +403,36 @@
    GRID DE PRODUTOS - RESPONSIVO PARA DESK/NOTE
    ============================================ */
 
-/* Desktop grande (1600px+) - 4 colunas */
+/* Desktop grande (1600px+) - 8 colunas */
 .premium-product-grid.search-grid {
     display: grid !important;
-    grid-template-columns: repeat(4, 1fr) !important;
+    grid-template-columns: repeat(8, 1fr) !important;
     gap: 1.25rem;
     width: 100%;
     box-sizing: border-box;
     margin-bottom: 1.5rem;
 }
 
-/* Desktop médio (1280px - 1599px) - 4 colunas */
+/* Desktop médio (1280px - 1599px) - 8 colunas */
 @media (max-width: 1599px) and (min-width: 1280px) {
     .premium-product-grid.search-grid {
-        grid-template-columns: repeat(4, 1fr) !important;
+        grid-template-columns: repeat(8, 1fr) !important;
         gap: 1rem;
     }
 }
 
-/* Notebook grande (1024px - 1279px) - 3 colunas */
+/* Notebook grande (1024px - 1279px) - 6 colunas */
 @media (max-width: 1279px) and (min-width: 1024px) {
     .premium-product-grid.search-grid {
-        grid-template-columns: repeat(3, 1fr) !important;
+        grid-template-columns: repeat(6, 1fr) !important;
         gap: 0.875rem;
     }
 }
 
-/* Tablet (768px - 1023px) - 2 colunas */
+/* Tablet (768px - 1023px) - 4 colunas */
 @media (max-width: 1023px) and (min-width: 768px) {
     .premium-product-grid.search-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
+        grid-template-columns: repeat(4, 1fr) !important;
         gap: 0.75rem;
     }
 }
@@ -668,37 +665,73 @@ function viewProduct(productId) {
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('searchInput');
     const searchForm = document.getElementById('searchForm');
+    const searchSubmitBtn = document.querySelector('.search-submit-btn');
     
     // Focus no input de busca
     if (searchInput && !searchInput.value) {
         searchInput.focus();
     }
     
-    // Real-time search with debounce
+    // Função para realizar busca
+    function performSearch() {
+        if (searchForm) {
+            searchForm.submit();
+        }
+    }
+    
+    // Real-time search with debounce ao digitar
     if (searchInput && searchForm) {
         let searchTimeout;
         searchInput.addEventListener('input', function() {
             clearTimeout(searchTimeout);
             const query = this.value.trim();
             searchTimeout = setTimeout(() => {
+                // Buscar quando digitar 2 ou mais caracteres, ou quando limpar (0 caracteres)
                 if (query.length >= 2 || query.length === 0) {
-                    searchForm.submit();
+                    performSearch();
                 }
             }, 500);
+        });
+        
+        // Buscar ao pressionar Enter
+        searchInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                clearTimeout(searchTimeout);
+                performSearch();
+            }
+        });
+    }
+    
+    // Buscar ao clicar no botão
+    if (searchSubmitBtn) {
+        searchSubmitBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            performSearch();
         });
     }
     
     // Add loading state during search
     if (searchForm) {
         searchForm.addEventListener('submit', function(e) {
-            const searchInput = document.getElementById('searchInput');
             if (searchInput) {
                 searchInput.style.opacity = '0.7';
                 searchInput.disabled = true;
                 
+                if (searchSubmitBtn) {
+                    searchSubmitBtn.style.opacity = '0.7';
+                    searchSubmitBtn.disabled = true;
+                }
+                
                 setTimeout(() => {
-                    searchInput.style.opacity = '1';
-                    searchInput.disabled = false;
+                    if (searchInput) {
+                        searchInput.style.opacity = '1';
+                        searchInput.disabled = false;
+                    }
+                    if (searchSubmitBtn) {
+                        searchSubmitBtn.style.opacity = '1';
+                        searchSubmitBtn.disabled = false;
+                    }
                 }, 1000);
             }
         });

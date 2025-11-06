@@ -44,7 +44,10 @@ class FinancialScheduleController extends Controller
         $totalExpenses = $expenses->sum('amount');
         $balance = $totalIncomes - $totalExpenses;
         
-        return view('financial-schedule.index', compact('incomes', 'expenses', 'month', 'year', 'notificationCount', 'totalIncomes', 'totalExpenses', 'balance'));
+        // Contar saídas pagas (confirmadas)
+        $expensesPaidCount = $expenses->where('is_confirmed', true)->count();
+        
+        return view('financial-schedule.index', compact('incomes', 'expenses', 'month', 'year', 'notificationCount', 'totalIncomes', 'totalExpenses', 'balance', 'expensesPaidCount'));
     }
     
     public function create()
