@@ -463,29 +463,36 @@ function openProductModal(productId, productName, productCategory, productImage)
         return;
     }
     
-    // Verificar se ProductModalManager está disponível
-    if (typeof window.openProductModal === 'function' && window.ProductModalManager) {
-        // Usar o ProductModalManager global (definido no product-modal.js)
-        // A função openProductModal já está sobrescrita no product-modal.js
-        // Mas vamos garantir que está usando o manager
-        if (window.productModalManager) {
-            window.productModalManager.open(productId, productName, productCategory, productImage);
-        } else if (window.ProductModalManager) {
-            // Se ainda não foi inicializado, inicializar agora
-            window.productModalManager = new window.ProductModalManager();
-            window.productModalManager.open(productId, productName, productCategory, productImage);
-        } else {
-            console.error('ProductModalManager não encontrado');
-            alert('Erro: Modal não inicializado. Recarregue a página.');
+        // Verificar se ProductModalManager está disponível
+        if (typeof window.openProductModal === 'function' && window.ProductModalManager) {
+            // Usar o ProductModalManager global (definido no product-modal.js)
+            // A função openProductModal já está sobrescrita no product-modal.js
+            // Mas vamos garantir que está usando o manager
+            if (window.productModalManager) {
+                // Aguardar abertura assíncrona
+                window.productModalManager.open(productId, productName, productCategory, productImage).catch(err => {
+                    console.error('Erro ao abrir modal:', err);
+                });
+            } else if (window.ProductModalManager) {
+                // Se ainda não foi inicializado, inicializar agora
+                window.productModalManager = new window.ProductModalManager();
+                window.productModalManager.open(productId, productName, productCategory, productImage).catch(err => {
+                    console.error('Erro ao abrir modal:', err);
+                });
+            } else {
+                console.error('ProductModalManager não encontrado');
+                alert('Erro: Modal não inicializado. Recarregue a página.');
+            }
+            return;
         }
-        return;
-    }
-    
-    // Fallback: tentar usar função global
-    if (typeof window.openProductModal === 'function') {
-        window.openProductModal(productId, productName, productCategory, productImage);
-        return;
-    }
+        
+        // Fallback: tentar usar função global
+        if (typeof window.openProductModal === 'function') {
+            window.openProductModal(productId, productName, productCategory, productImage).catch(err => {
+                console.error('Erro ao abrir modal:', err);
+            });
+            return;
+        }
     
     console.error('Nenhum sistema de modal disponível');
     alert('Erro: Sistema de modal não disponível. Recarregue a página.');

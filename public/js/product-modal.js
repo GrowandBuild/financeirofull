@@ -9,6 +9,7 @@ class ProductModalManager {
         this.isOpen = false;
         this.currentProduct = null;
         this.productVariants = {};
+        this.loadProductsPromise = null;
         
         this.init();
     }
@@ -111,38 +112,50 @@ class ProductModalManager {
     }
     
     async loadProducts() {
-        try {
-            const response = await fetch('/api/products');
-            const products = await response.json();
-            
-            this.productVariants = {};
-            products.forEach(product => {
-                let processedVariants = [];
-                if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
-                    processedVariants = product.variants.map(variant => {
-                        if (typeof variant === 'object' && variant !== null) {
-                            return variant.name || variant.unit || JSON.stringify(variant);
-                        }
-                        return variant;
-                    }).filter(v => v);
-                }
-                
-                this.productVariants[product.name] = {
-                    id: product.id,
-                    category: product.category,
-                    variants: processedVariants,
-                    units: product.unit ? [product.unit] : ['unidade'],
-                    image_url: product.image_url
-                };
-            });
-            
-            console.log('Produtos carregados:', this.productVariants);
-        } catch (error) {
-            console.error('Erro ao carregar produtos:', error);
+        // Se já está carregando, retornar a promise existente
+        if (this.loadProductsPromise) {
+            return this.loadProductsPromise;
         }
+        
+        this.loadProductsPromise = (async () => {
+            try {
+                const response = await fetch('/api/products');
+                const products = await response.json();
+                
+                this.productVariants = {};
+                products.forEach(product => {
+                    let processedVariants = [];
+                    if (product.variants && Array.isArray(product.variants) && product.variants.length > 0) {
+                        processedVariants = product.variants.map(variant => {
+                            if (typeof variant === 'object' && variant !== null) {
+                                return variant.name || variant.unit || JSON.stringify(variant);
+                            }
+                            return variant;
+                        }).filter(v => v);
+                    }
+                    
+                    this.productVariants[product.name] = {
+                        id: product.id,
+                        category: product.category,
+                        variants: processedVariants,
+                        units: product.unit ? [product.unit] : ['unidade'],
+                        image_url: product.image_url
+                    };
+                });
+                
+                console.log('Produtos carregados:', this.productVariants);
+                return this.productVariants;
+            } catch (error) {
+                console.error('Erro ao carregar produtos:', error);
+                this.loadProductsPromise = null; // Resetar para tentar novamente
+                throw error;
+            }
+        })();
+        
+        return this.loadProductsPromise;
     }
     
-    open(productId, productName, productCategory, productImage) {
+    async open(productId, productName, productCategory, productImage) {
         if (!productId || !productName) {
             console.error('Parâmetros inválidos para open:', { productId, productName });
             return;
@@ -155,10 +168,17 @@ class ProductModalManager {
             image: String(productImage || '').trim()
         };
         
+        // Garantir que os produtos foram carregados antes de popular variantes
+        try {
+            await this.loadProducts();
+        } catch (error) {
+            console.error('Erro ao carregar produtos antes de abrir modal:', error);
+        }
+        
         // Preencher informações do produto
         this.populateProductInfo();
         
-        // Popular variantes
+        // Popular variantes (agora os produtos já estão carregados)
         this.populateVariants();
         
         // Popular unidades
@@ -204,23 +224,47 @@ class ProductModalManager {
         const variantSelect = document.getElementById('variantSelect');
         if (!variantSelect) return;
         
+        // Limpar select
         variantSelect.innerHTML = '<option value="">Padrão</option>';
         
         let variantsToShow = [];
         const productName = this.currentProduct.name;
         
+        // Primeiro tentar buscar pelo nome exato do produto
         if (this.productVariants[productName]?.variants?.length > 0) {
-            variantsToShow = this.productVariants[productName].variants;
+            variantsToShow = [...this.productVariants[productName].variants];
         } else {
+            // Tentar buscar por categoria
             variantsToShow = this.getVariantsByCategory(this.currentProduct.category);
+            
+            // Se ainda não encontrou, buscar por produtos com nome similar
+            if (variantsToShow.length === 0) {
+                // Procurar produtos que começam com o mesmo nome
+                for (const [name, data] of Object.entries(this.productVariants)) {
+                    if (name.toLowerCase().includes(productName.toLowerCase()) || 
+                        productName.toLowerCase().includes(name.toLowerCase())) {
+                        if (data.variants && data.variants.length > 0) {
+                            variantsToShow = [...data.variants];
+                            break;
+                        }
+                    }
+                }
+            }
         }
         
-        variantsToShow.forEach(variant => {
-            const option = document.createElement('option');
-            option.value = variant;
-            option.textContent = variant;
-            variantSelect.appendChild(option);
-        });
+        // Adicionar variantes ao select
+        if (variantsToShow.length > 0) {
+            variantsToShow.forEach(variant => {
+                if (variant && variant.trim() !== '') {
+                    const option = document.createElement('option');
+                    option.value = variant;
+                    option.textContent = variant;
+                    variantSelect.appendChild(option);
+                }
+            });
+        }
+        
+        console.log('Variantes carregadas para', productName, ':', variantsToShow);
     }
     
     populateUnits() {
@@ -427,9 +471,9 @@ if (document.readyState === 'loading') {
 }
 
 // Função global para abrir o modal (compatibilidade)
-window.openProductModal = function(productId, productName, productCategory, productImage) {
+window.openProductModal = async function(productId, productName, productCategory, productImage) {
     if (productModalManager) {
-        productModalManager.open(productId, productName, productCategory, productImage);
+        await productModalManager.open(productId, productName, productCategory, productImage);
     } else {
         console.error('ProductModalManager não inicializado');
     }
