@@ -271,38 +271,55 @@
                                 <div style="color: #10b981; font-size: 1rem; font-weight: 600;">
                                     R$ {{ number_format($category['expected_monthly_amount'] ?? 0, 2, ',', '.') }}
                                 </div>
-                                <div style="color: #9ca3af; font-size: 0.75rem;">Valor Esperado</div>
+                                <div style="color: #9ca3af; font-size: 0.75rem;">Orçamento Ideal</div>
                             </div>
                             <div class="text-center flex-grow-1" style="border-left: 1px solid rgba(255,255,255,0.2);">
-                                <div style="color: #3b82f6; font-size: 1rem; font-weight: 600;">
-                                    R$ {{ number_format($category['available_amount'], 2, ',', '.') }}
-                                </div>
-                                <div style="color: #9ca3af; font-size: 0.75rem;">Disponível</div>
-                            </div>
-                            <div class="text-center flex-grow-1" style="border-left: 1px solid rgba(255,255,255,0.2); border-right: 1px solid rgba(255,255,255,0.2);">
                                 <div style="color: #f59e0b; font-size: 1rem; font-weight: 600;">
                                     R$ {{ number_format($category['actual_amount'], 2, ',', '.') }}
                                 </div>
-                                <div style="color: #9ca3af; font-size: 0.75rem;">Gasto</div>
+                                <div style="color: #9ca3af; font-size: 0.75rem;">Gasto Real</div>
                             </div>
-                            <div class="text-center flex-grow-1">
-                                <div style="color: {{ $category['available_amount'] >= $category['actual_amount'] ? '#10b981' : '#ef4444' }}; font-size: 1rem; font-weight: 600;">
-                                    R$ {{ number_format($category['available_amount'] - $category['actual_amount'], 2, ',', '.') }}
+                            <div class="text-center flex-grow-1" style="border-left: 1px solid rgba(255,255,255,0.2);">
+                                @php
+                                    $remaining = $category['remaining_amount'] ?? ($category['expected_monthly_amount'] - $category['actual_amount']);
+                                    $isOverBudget = $remaining < 0;
+                                @endphp
+                                <div style="color: {{ $isOverBudget ? '#ef4444' : '#10b981' }}; font-size: 1rem; font-weight: 600;">
+                                    R$ {{ number_format($remaining, 2, ',', '.') }}
                                 </div>
-                                <div style="color: #9ca3af; font-size: 0.75rem;">Restante</div>
+                                <div style="color: #9ca3af; font-size: 0.75rem;">
+                                    {{ $isOverBudget ? 'Acima do Orçamento' : 'Restante do Orçamento' }}
+                                </div>
                             </div>
                         </div>
-                        @if($category['available_amount'] > 0)
+                        @php
+                            $expectedAmount = $category['expected_monthly_amount'] ?? 0;
+                            $actualAmount = $category['actual_amount'] ?? 0;
+                            $progressPercentage = $expectedAmount > 0 ? min(100, ($actualAmount / $expectedAmount) * 100) : 0;
+                        @endphp
+                        @if($expectedAmount > 0)
                         <div class="progress" style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 6px;">
-                            @php
-                                $percentage = min(100, ($category['actual_amount'] / $category['available_amount']) * 100);
-                            @endphp
                             <div class="progress-bar" role="progressbar" 
-                                 style="width: {{ $percentage }}%; 
+                                 style="width: {{ $progressPercentage }}%; 
                                         background: linear-gradient(90deg, 
-                                            {{ $percentage < 80 ? '#10b981' : ($percentage < 100 ? '#f59e0b' : '#ef4444') }}, 
-                                            {{ $percentage < 80 ? '#059669' : ($percentage < 100 ? '#d97706' : '#dc2626') }}); 
-                                        border-radius: 6px;"></div>
+                                            {{ $progressPercentage < 80 ? '#10b981' : ($progressPercentage < 100 ? '#f59e0b' : '#ef4444') }}, 
+                                            {{ $progressPercentage < 80 ? '#059669' : ($progressPercentage < 100 ? '#d97706' : '#dc2626') }}); 
+                                        border-radius: 6px; 
+                                        {{ $progressPercentage > 100 ? 'width: 100%; background: linear-gradient(90deg, #ef4444, #dc2626) !important;' : '' }}"></div>
+                            @if($progressPercentage > 100)
+                            <div style="position: absolute; right: 0; top: 50%; transform: translateY(-50%); color: #ef4444; font-size: 0.7rem; font-weight: 600; padding-right: 4px;">
+                                +{{ number_format($progressPercentage - 100, 0) }}%
+                            </div>
+                            @endif
+                        </div>
+                        <div style="margin-top: 0.5rem; font-size: 0.75rem; color: rgba(255,255,255,0.6);">
+                            @if($progressPercentage > 100)
+                                <span style="color: #ef4444;">⚠️ Você gastou {{ number_format($progressPercentage, 1) }}% do orçamento ideal</span>
+                            @elseif($progressPercentage >= 80)
+                                <span style="color: #f59e0b;">⚠️ Você já gastou {{ number_format($progressPercentage, 1) }}% do orçamento ideal</span>
+                            @else
+                                <span style="color: #10b981;">✓ Você gastou {{ number_format($progressPercentage, 1) }}% do orçamento ideal</span>
+                            @endif
                         </div>
                         @endif
                     </div>

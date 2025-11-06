@@ -292,12 +292,16 @@ class GoalController extends Controller
             // Valor que deveria ser gasto baseado na renda mensal total atual
             $expectedMonthlyAmount = ($actualIncome * $percentage) / 100;
             
+            // Calcular restante baseado no orçamento ideal (Valor Esperado)
+            $remainingAmount = $expectedMonthlyAmount - $actualAmount;
+            
             $progressData[$key] = [
                 'label' => $this->getCategoryLabel($key),
                 'percentage' => $percentage,
                 'actual_amount' => $actualAmount,
-                'available_amount' => $availableAmount,
-                'expected_monthly_amount' => $expectedMonthlyAmount
+                'available_amount' => $availableAmount, // Mantido para referência, mas não usado no cálculo principal
+                'expected_monthly_amount' => $expectedMonthlyAmount,
+                'remaining_amount' => $remainingAmount // Novo: quanto resta do orçamento ideal
             ];
         }
         
