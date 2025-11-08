@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\Purchase;
+use App\Models\PurchaseDraft;
 use App\Models\CashFlow;
 use App\Models\Category;
 use App\Services\ProductStatsService;
@@ -239,7 +240,40 @@ class ProductController extends Controller
             ->orderBy('category')
             ->pluck('category');
 
-        return view('products.compra', compact('products', 'categories'));
+        $drafts = PurchaseDraft::where('user_id', Auth::id())->get();
+
+        $draftItems = [];
+        $draftTotal = 0;
+        $draftCount = 0;
+
+        foreach ($drafts as $draft) {
+            $item = [
+                'id' => $draft->product_id,
+                'name' => $draft->product_name,
+                'variant' => $draft->variant,
+                'unit' => $draft->unit,
+                'quantity' => (float) $draft->quantity,
+                'price' => (float) $draft->price,
+                'total' => (float) $draft->total,
+                'subquantity' => $draft->subquantity !== null ? (float) $draft->subquantity : null,
+            ];
+
+            if (is_array($draft->metadata)) {
+                $item = array_merge($item, $draft->metadata);
+            }
+
+            $draftItems[$draft->cart_key] = $item;
+            $draftTotal += (float) $draft->total;
+            $draftCount += (float) $draft->quantity;
+        }
+
+        $initialCart = [
+            'items' => $draftItems,
+            'total' => round($draftTotal, 2),
+            'count' => $draftCount,
+        ];
+
+        return view('products.compra', compact('products', 'categories', 'initialCart'));
     }
 
     /**
@@ -451,6 +485,9 @@ class ProductController extends Controller
             // Atualizar estatísticas dos produtos em lote usando Service
             $productIds = array_unique(array_column($request->items, 'product_id'));
             $this->statsService->updateProductStats($productIds);
+
+            // Limpar rascunho do carrinho após finalizar a compra
+            PurchaseDraft::where('user_id', $userId)->delete();
             
             return response()->json([
                 'success' => true,
@@ -535,11 +572,42 @@ class ProductController extends Controller
      */
     public function getCartState(Request $request): JsonResponse
     {
-        $cart = $request->session()->get('purchase_cart', []);
+        $userId = Auth::id();
+
+        $drafts = PurchaseDraft::where('user_id', $userId)->get();
+
+        $items = [];
+        $total = 0;
+        $count = 0;
+
+        foreach ($drafts as $draft) {
+            $item = [
+                'id' => $draft->product_id,
+                'name' => $draft->product_name,
+                'variant' => $draft->variant,
+                'unit' => $draft->unit,
+                'quantity' => (float) $draft->quantity,
+                'price' => (float) $draft->price,
+                'total' => (float) $draft->total,
+                'subquantity' => $draft->subquantity !== null ? (float) $draft->subquantity : null,
+            ];
+
+            if (is_array($draft->metadata)) {
+                $item = array_merge($item, $draft->metadata);
+            }
+
+            $items[$draft->cart_key] = $item;
+            $total += (float) $draft->total;
+            $count += (float) $draft->quantity;
+        }
 
         return response()->json([
             'success' => true,
-            'cart' => $cart,
+            'cart' => [
+                'items' => $items,
+                'total' => round($total, 2),
+                'count' => $count,
+            ],
         ]);
     }
 
@@ -552,14 +620,81 @@ class ProductController extends Controller
             'cart' => 'required|array',
         ]);
 
+        $userId = Auth::id();
         $cart = $validated['cart'] ?? [];
-        $items = $cart['items'] ?? null;
+        $items = $cart['items'] ?? [];
 
-        if (empty($cart) || (is_array($items) && empty($items))) {
-            $request->session()->forget('purchase_cart');
-        } else {
-            $request->session()->put('purchase_cart', $cart);
+        if (empty($items)) {
+            PurchaseDraft::where('user_id', $userId)->delete();
+
+            return response()->json([
+                'success' => true,
+            ]);
         }
+
+        DB::transaction(function () use ($userId, $items) {
+            $existingKeys = PurchaseDraft::where('user_id', $userId)
+                ->pluck('cart_key')
+                ->all();
+
+            $incomingKeys = [];
+
+            foreach ($items as $cartKey => $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $incomingKeys[] = $cartKey;
+
+                $productId = isset($item['id']) ? (int) $item['id'] : null;
+                if (!$productId) {
+                    continue;
+                }
+                $quantity = isset($item['quantity']) ? (float) $item['quantity'] : 0.0;
+                $price = isset($item['price']) ? (float) $item['price'] : 0.0;
+                $total = isset($item['total']) ? (float) $item['total'] : $quantity * $price;
+                $subquantity = isset($item['subquantity']) && $item['subquantity'] !== null
+                    ? (float) $item['subquantity']
+                    : null;
+
+                $unit = isset($item['unit']) ? trim((string) $item['unit']) : null;
+                $variant = isset($item['variant']) ? trim((string) $item['variant']) : null;
+
+                $metadata = [
+                    'displayName' => $item['displayName'] ?? null,
+                    'category' => $item['category'] ?? null,
+                    'image' => $item['image'] ?? null,
+                    'unitLabel' => $item['unitLabel'] ?? null,
+                ];
+
+                PurchaseDraft::updateOrCreate(
+                    [
+                        'user_id' => $userId,
+                        'cart_key' => (string) $cartKey,
+                    ],
+                    [
+                        'product_id' => $productId,
+                        'product_name' => $item['name'] ?? '',
+                        'variant' => $variant !== '' ? $variant : null,
+                        'unit' => $unit !== '' ? $unit : null,
+                        'quantity' => $quantity,
+                        'subquantity' => $subquantity,
+                        'price' => $price,
+                        'total' => $total,
+                        'metadata' => array_filter($metadata, function ($value) {
+                            return $value !== null;
+                        }),
+                    ]
+                );
+            }
+
+            $keysToDelete = array_diff($existingKeys, $incomingKeys);
+            if (!empty($keysToDelete)) {
+                PurchaseDraft::where('user_id', $userId)
+                    ->whereIn('cart_key', $keysToDelete)
+                    ->delete();
+            }
+        });
 
         return response()->json([
             'success' => true,
@@ -571,7 +706,7 @@ class ProductController extends Controller
      */
     public function clearCartState(Request $request): JsonResponse
     {
-        $request->session()->forget('purchase_cart');
+        PurchaseDraft::where('user_id', Auth::id())->delete();
 
         return response()->json([
             'success' => true,

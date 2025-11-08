@@ -148,7 +148,7 @@ let currentProduct = null;
 
 const CART_STORAGE_KEY = 'purchaseCartData';
 let cachedStorageProvider = null;
-let initialServerCartData = @json(session('purchase_cart', []));
+let initialServerCartData = @json($initialCart ?? ['items' => [], 'total' => 0, 'count' => 0]);
 const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 let lastSyncedSnapshotJSON = null;
 let cartSyncTimeout = null;
