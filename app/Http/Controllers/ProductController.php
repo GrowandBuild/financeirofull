@@ -8,6 +8,7 @@ use App\Models\CashFlow;
 use App\Models\Category;
 use App\Services\ProductStatsService;
 use App\Policies\PurchasePolicy;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -527,5 +528,53 @@ class ProductController extends Controller
 
             return redirect()->back()->with('error', 'Erro ao excluir compra');
         }
+    }
+
+    /**
+     * Retorna o estado atual do carrinho armazenado na sessão.
+     */
+    public function getCartState(Request $request): JsonResponse
+    {
+        $cart = $request->session()->get('purchase_cart', []);
+
+        return response()->json([
+            'success' => true,
+            'cart' => $cart,
+        ]);
+    }
+
+    /**
+     * Salva o estado do carrinho na sessão do usuário.
+     */
+    public function saveCartState(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'cart' => 'required|array',
+        ]);
+
+        $cart = $validated['cart'] ?? [];
+        $items = $cart['items'] ?? null;
+
+        if (empty($cart) || (is_array($items) && empty($items))) {
+            $request->session()->forget('purchase_cart');
+        } else {
+            $request->session()->put('purchase_cart', $cart);
+        }
+
+        return response()->json([
+            'success' => true,
+        ]);
+    }
+
+    /**
+     * Limpa o estado do carrinho da sessão.
+     */
+    public function clearCartState(Request $request): JsonResponse
+    {
+        $request->session()->forget('purchase_cart');
+
+        return response()->json([
+            'success' => true,
+        ]);
     }
 }

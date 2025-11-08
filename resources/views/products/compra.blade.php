@@ -148,6 +148,11 @@ let currentProduct = null;
 
 const CART_STORAGE_KEY = 'purchaseCartData';
 let cachedStorageProvider = null;
+let initialServerCartData = @json(session('purchase_cart', []));
+const CSRF_TOKEN = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+let lastSyncedSnapshotJSON = null;
+let cartSyncTimeout = null;
+let isSyncInFlight = false;
 
 function resolveStorageProvider() {
     if (cachedStorageProvider !== null) {
@@ -185,6 +190,94 @@ function resolveStorageProvider() {
     return cachedStorageProvider;
 }
 
+function normalizeCartItems(items) {
+    if (!items || typeof items !== 'object') {
+        return {};
+    }
+    
+    const normalized = {};
+    Object.entries(items).forEach(([key, item]) => {
+        if (!item || typeof item !== 'object') {
+            return;
+        }
+        
+        const normalizedItem = { ...item };
+        normalizedItem.quantity = Number(item.quantity) || 0;
+        normalizedItem.price = Number(item.price) || 0;
+        
+        const rawTotal = Number(item.total);
+        normalizedItem.total = Number.isFinite(rawTotal)
+            ? rawTotal
+            : normalizedItem.quantity * normalizedItem.price;
+        
+        if (item.subquantity !== undefined && item.subquantity !== null) {
+            const numericSub = Number(item.subquantity);
+            normalizedItem.subquantity = Number.isFinite(numericSub) ? numericSub : null;
+        } else if (normalizedItem.subquantity !== null && normalizedItem.subquantity !== undefined) {
+            const numericSub = Number(normalizedItem.subquantity);
+            normalizedItem.subquantity = Number.isFinite(numericSub) ? numericSub : null;
+        } else {
+            normalizedItem.subquantity = null;
+        }
+        
+        normalized[key] = normalizedItem;
+    });
+    
+    return normalized;
+}
+
+function extractCartItems(data) {
+    if (!data) {
+        return null;
+    }
+    
+    if (data.items && typeof data.items === 'object' && data.items !== null) {
+        return data.items;
+    }
+    
+    if (typeof data === 'object' && !Array.isArray(data)) {
+        return data;
+    }
+    
+    return null;
+}
+
+function buildSerializableCart() {
+    const items = {};
+    let total = 0;
+    let count = 0;
+    
+    Object.entries(cart).forEach(([key, item]) => {
+        if (!item || typeof item !== 'object') {
+            return;
+        }
+        
+        const sanitizedItem = { ...item };
+        sanitizedItem.quantity = Number(item.quantity) || 0;
+        sanitizedItem.price = Number(item.price) || 0;
+        const rawSubquantity = item.subquantity !== undefined && item.subquantity !== null
+            ? Number(item.subquantity)
+            : null;
+        sanitizedItem.subquantity = Number.isFinite(rawSubquantity) ? rawSubquantity : null;
+        
+        let rawTotal = Number(item.total);
+        if (!Number.isFinite(rawTotal)) {
+            rawTotal = sanitizedItem.quantity * sanitizedItem.price;
+        }
+        sanitizedItem.total = Number(rawTotal.toFixed(2));
+        
+        items[key] = sanitizedItem;
+        total += sanitizedItem.total;
+        count += sanitizedItem.quantity;
+    });
+    
+    return {
+        items,
+        total: Number(total.toFixed(2)),
+        count: Number(count)
+    };
+}
+
 function saveCartToStorage() {
     try {
         const storage = resolveStorageProvider();
@@ -192,24 +285,8 @@ function saveCartToStorage() {
             return;
         }
         
-        const sanitizedCart = {};
-        Object.entries(cart).forEach(([key, item]) => {
-            if (item && typeof item === 'object') {
-                sanitizedCart[key] = {
-                    ...item,
-                    quantity: Number(item.quantity) || 0,
-                    price: Number(item.price) || 0,
-                    total: Number(item.total) || 0
-                };
-            }
-        });
-        
-        const payload = {
-            items: sanitizedCart,
-            updatedAt: Date.now()
-        };
-        
-        storage.setItem(CART_STORAGE_KEY, JSON.stringify(payload));
+        const snapshot = buildSerializableCart();
+        storage.setItem(CART_STORAGE_KEY, JSON.stringify(snapshot));
     } catch (error) {
         console.error('Erro ao salvar carrinho no storage:', error);
     }
@@ -228,23 +305,12 @@ function loadCartFromStorage() {
         }
         
         const parsed = JSON.parse(raw);
-        if (!parsed || typeof parsed.items !== 'object' || parsed.items === null) {
+        const items = extractCartItems(parsed);
+        if (!items) {
             return null;
         }
         
-        const loadedCart = {};
-        Object.entries(parsed.items).forEach(([key, item]) => {
-            if (item && typeof item === 'object') {
-                loadedCart[key] = {
-                    ...item,
-                    quantity: Number(item.quantity) || 0,
-                    price: Number(item.price) || 0,
-                    total: Number(item.total) || 0
-                };
-            }
-        });
-        
-        return loadedCart;
+        return normalizeCartItems(items);
     } catch (error) {
         console.error('Erro ao carregar carrinho do storage:', error);
         return null;
@@ -261,6 +327,81 @@ function clearCartStorage() {
         storage.removeItem(CART_STORAGE_KEY);
     } catch (error) {
         console.error('Erro ao limpar carrinho do storage:', error);
+    }
+}
+
+function scheduleCartSync(force = false) {
+    if (cartSyncTimeout) {
+        clearTimeout(cartSyncTimeout);
+    }
+    
+    cartSyncTimeout = setTimeout(() => {
+        syncCartWithServer(force);
+    }, force ? 0 : 400);
+}
+
+async function syncCartWithServer(force = false) {
+    if (!CSRF_TOKEN) {
+        console.warn('CSRF token não encontrado; sincronização com o servidor foi ignorada.');
+        return;
+    }
+    
+    if (isSyncInFlight && !force) {
+        return;
+    }
+    
+    const snapshot = buildSerializableCart();
+    const snapshotJSON = JSON.stringify(snapshot);
+    
+    if (!force && snapshotJSON === lastSyncedSnapshotJSON) {
+        return;
+    }
+    
+    isSyncInFlight = true;
+    try {
+        const response = await fetch('/cart/state', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({ cart: snapshot })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        lastSyncedSnapshotJSON = snapshotJSON;
+    } catch (error) {
+        console.error('Falha ao sincronizar carrinho com o servidor:', error);
+    } finally {
+        isSyncInFlight = false;
+    }
+}
+
+async function clearCartOnServer() {
+    if (!CSRF_TOKEN) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/cart/state', {
+            method: 'DELETE',
+            headers: {
+                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'Accept': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        lastSyncedSnapshotJSON = JSON.stringify({ items: {}, total: 0, count: 0 });
+    } catch (error) {
+        console.error('Falha ao limpar carrinho no servidor:', error);
     }
 }
 
@@ -480,19 +621,38 @@ function getUnitsByCategory(category) {
 function initializeCart() {
     console.log('Inicializando carrinho');
     
-    const storedCart = loadCartFromStorage();
-    if (storedCart && Object.keys(storedCart).length > 0) {
-        cart = storedCart;
-        console.log('Carrinho restaurado do storage:', cart);
+    let source = 'empty';
+    const serverCartItems = normalizeCartItems(extractCartItems(initialServerCartData));
+    
+    if (serverCartItems && Object.keys(serverCartItems).length > 0) {
+        cart = serverCartItems;
+        source = 'server';
+        const snapshot = buildSerializableCart();
+        lastSyncedSnapshotJSON = JSON.stringify(snapshot);
+        saveCartToStorage();
+        console.log('Carrinho restaurado da sessão:', cart);
     } else {
-        cart = {};
-        clearCartStorage();
+        const storedCart = loadCartFromStorage();
+        if (storedCart && Object.keys(storedCart).length > 0) {
+            cart = storedCart;
+            source = 'storage';
+            console.log('Carrinho restaurado do storage:', cart);
+        } else {
+            cart = {};
+            clearCartStorage();
+            console.log('Nenhum carrinho encontrado; inicializando vazio.');
+        }
     }
     
+    initialServerCartData = null;
     cartTotal = 0;
     cartItemsCount = 0;
-    console.log('Carrinho inicializado:', cart);
+    console.log('Carrinho inicializado a partir de:', source);
     updateCartDisplay();
+    
+    if (source === 'storage') {
+        scheduleCartSync();
+    }
 }
 
 function refreshProductCardsFromCart() {
@@ -850,8 +1010,24 @@ function decreaseQuantity(productId) {
 function updateCartDisplay() {
     console.log('updateCartDisplay chamada, carrinho atual:', cart);
     
-    cartTotal = Object.values(cart).reduce((sum, item) => sum + item.total, 0);
-    cartItemsCount = Object.values(cart).reduce((sum, item) => sum + item.quantity, 0);
+    cartTotal = Object.values(cart).reduce((sum, item) => {
+        if (!item || typeof item !== 'object') {
+            return sum;
+        }
+        const numericTotal = Number(item.total);
+        if (Number.isFinite(numericTotal)) {
+            return sum + numericTotal;
+        }
+        const quantity = Number(item.quantity) || 0;
+        const price = Number(item.price) || 0;
+        return sum + (quantity * price);
+    }, 0);
+    cartItemsCount = Object.values(cart).reduce((sum, item) => {
+        if (!item || typeof item !== 'object') {
+            return sum;
+        }
+        return sum + (Number(item.quantity) || 0);
+    }, 0);
     
     console.log('Totais calculados:', { cartTotal, cartItemsCount });
     
@@ -884,6 +1060,7 @@ function updateCartDisplay() {
     }
     
     refreshProductCardsFromCart();
+    scheduleCartSync();
 }
 
 // Update product card display
@@ -983,18 +1160,25 @@ function toggleProductList() {
 }
 
 // Clear cart
-function clearCart() {
+async function clearCart() {
     if (confirm('Tem certeza que deseja limpar o carrinho?')) {
         cart = {};
         cartTotal = 0;
         cartItemsCount = 0;
         clearCartStorage();
+        await clearCartOnServer();
         updateCartDisplay();
         // Reset all product cards
         document.querySelectorAll('.cart-product-card').forEach(card => {
             card.classList.remove('in-cart');
-            card.querySelector('.cart-controls').style.display = 'none';
-            card.querySelector('.quantity').textContent = '0';
+            const controls = card.querySelector('.cart-controls');
+            if (controls) {
+                controls.style.display = 'none';
+            }
+            const quantityEl = card.querySelector('.quantity');
+            if (quantityEl) {
+                quantityEl.textContent = '0';
+            }
         });
     }
 }
@@ -1027,7 +1211,7 @@ function savePurchase() {
 }
 
 // Finalizar compra
-function finalizePurchase() {
+async function finalizePurchase() {
     console.log('finalizePurchase chamada');
     console.log('cartItemsCount:', cartItemsCount);
     console.log('cart atual:', cart);
@@ -1049,31 +1233,35 @@ function finalizePurchase() {
     const confirmMessage = `Finalizar compra?\n\nLoja: ${storeName}\nData: ${purchaseDate}\nTotal: R$ ${cartTotal.toFixed(2).replace('.', ',')}\nItens: ${cartItemsCount}`;
     
     if (confirm(confirmMessage)) {
-        // Preparar dados para envio
         console.log('Carrinho atual:', cart);
         
-        const items = Object.values(cart).map((item, index) => {
-            console.log(`Item ${index} do carrinho:`, item);
-            console.log(`Item ${index} - id:`, item.id, 'tipo:', typeof item.id);
-            
-            // Validar se o item tem id válido
-            if (!item.id || item.id === 0 || isNaN(item.id)) {
-                console.error(`Item ${index} tem id inválido:`, item.id);
-                alert(`Erro: Item "${item.name}" não possui ID válido. Recarregue a página e tente novamente.`);
-                throw new Error(`Item ${index} tem id inválido`);
-            }
-            
-            const mappedItem = {
-                product_id: parseInt(item.id), // Garantir que seja um número inteiro
-                quantity: parseFloat(item.quantity),
-                price: parseFloat(item.price),
-                variant: item.variant || null,
-                subquantity: item.subquantity ? parseFloat(item.subquantity) : null
-            };
-            
-            console.log(`Item ${index} mapeado:`, mappedItem);
-            return mappedItem;
-        });
+        let items;
+        try {
+            items = Object.values(cart).map((item, index) => {
+                console.log(`Item ${index} do carrinho:`, item);
+                console.log(`Item ${index} - id:`, item?.id, 'tipo:', typeof item?.id);
+                
+                if (!item || !item.id || item.id === 0 || isNaN(item.id)) {
+                    console.error(`Item ${index} tem id inválido:`, item?.id);
+                    throw new Error(`Item "${item?.name || 'Sem nome'}" não possui ID válido.`);
+                }
+                
+                const mappedItem = {
+                    product_id: parseInt(item.id), // Garantir que seja um número inteiro
+                    quantity: parseFloat(item.quantity),
+                    price: parseFloat(item.price),
+                    variant: item.variant || null,
+                    subquantity: item.subquantity ? parseFloat(item.subquantity) : null
+                };
+                
+                console.log(`Item ${index} mapeado:`, mappedItem);
+                return mappedItem;
+            });
+        } catch (error) {
+            console.error('Erro ao preparar itens da compra:', error);
+            showNotification(error.message || 'Erro ao preparar os itens da compra.', 'error');
+            return;
+        }
         
         console.log('Items preparados:', items);
         
@@ -1082,77 +1270,74 @@ function finalizePurchase() {
             date: purchaseDate,
             items: items,
             total: cartTotal,
-            _token: document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            _token: CSRF_TOKEN
         };
         
         console.log('Dados da compra:', purchaseData);
         
-        // Mostrar loading
         const checkoutBtn = document.querySelector('.checkout-btn');
-        const originalText = checkoutBtn.innerHTML;
-        checkoutBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processando...';
-        checkoutBtn.disabled = true;
+        const originalText = checkoutBtn ? checkoutBtn.innerHTML : '';
+        if (checkoutBtn) {
+            checkoutBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Processando...';
+            checkoutBtn.disabled = true;
+        }
         
-        // Enviar para o servidor
-        fetch('/compra/save', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(purchaseData)
-        })
-        .then(async response => {
+        try {
+            const response = await fetch('/compra/save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': CSRF_TOKEN,
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(purchaseData)
+            });
+            
             console.log('Response status:', response.status);
             console.log('Response ok:', response.ok);
             
-            // Tentar obter o texto da resposta primeiro para debug
             const responseText = await response.text();
             console.log('Response text:', responseText);
             
-            let data;
-            try {
-                data = JSON.parse(responseText);
-            } catch (e) {
-                console.error('Erro ao fazer parse do JSON:', e);
-                console.error('Response text:', responseText);
-                // Se não for JSON válido mas o status for 200, considerar sucesso
-                if (response.ok) {
-                    return { success: true, message: 'Compra salva com sucesso!' };
+            let data = null;
+            if (responseText) {
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    console.error('Erro ao fazer parse do JSON:', e);
+                    console.error('Response text:', responseText);
+                    
+                    if (response.ok) {
+                        data = { success: true, message: 'Compra salva com sucesso!' };
+                    } else {
+                        throw new Error('Resposta do servidor não é um JSON válido');
+                    }
                 }
-                throw new Error('Resposta do servidor não é um JSON válido');
+            } else if (response.ok) {
+                data = { success: true };
             }
             
-            // Se a resposta não foi OK, mas temos dados válidos, retornar os dados
-            // para que o código de sucesso possa verificar
-            if (!response.ok && data.success === false) {
-                return data; // Deixar o código de verificação tratar
+            if (!response.ok && (!data || data.success !== false)) {
+                throw new Error(data?.message || `HTTP ${response.status}`);
             }
             
-            // Se não for OK e não tiver success definido, lançar erro
-            if (!response.ok) {
-                throw new Error(data.message || `HTTP ${response.status}`);
-            }
-            
-            return data;
-        })
-        .then(data => {
-            console.log('Dados recebidos:', data);
-            console.log('data.success:', data.success);
-            console.log('typeof data.success:', typeof data.success);
-            
-            // Verificar se é sucesso (pode ser true, 'true', 1, etc)
-            const isSuccess = data.success === true || 
-                              data.success === 'true' || 
-                              data.success === 1 || 
-                              data.success === '1';
+            const isSuccess = data && (
+                data.success === true ||
+                data.success === 'true' ||
+                data.success === 1 ||
+                data.success === '1'
+            );
             
             if (isSuccess) {
                 alert('Compra finalizada com sucesso! 🎉\n\nVocê será redirecionado para o fluxo de caixa.');
                 
-                // Limpar carrinho sem confirmação
-                initializeCart();
+                cart = {};
+                cartTotal = 0;
+                cartItemsCount = 0;
+                clearCartStorage();
+                await clearCartOnServer();
+                updateCartDisplay();
+                
                 document.querySelectorAll('.cart-product-card').forEach(card => {
                     card.classList.remove('in-cart');
                     const controls = card.querySelector('.cart-controls');
@@ -1161,25 +1346,30 @@ function finalizePurchase() {
                     if (quantity) quantity.textContent = '0';
                 });
                 
-                // Redirecionar para fluxo de caixa
+                if (checkoutBtn) {
+                    checkoutBtn.innerHTML = originalText;
+                    checkoutBtn.disabled = false;
+                }
+                
                 window.location.href = '/cashflow/dashboard';
-            } else {
-                const errorMessage = data.message || 'Erro desconhecido ao salvar compra';
-                console.error('Erro do servidor:', errorMessage);
-                console.error('Dados completos:', data);
-                showNotification('Erro ao salvar compra: ' + errorMessage, 'error');
-                checkoutBtn.innerHTML = originalText;
-                checkoutBtn.disabled = false;
+                return;
             }
-        })
-        .catch(error => {
+            
+            const errorMessage = data?.message || 'Erro desconhecido ao salvar compra';
+            console.error('Erro do servidor:', errorMessage);
+            console.error('Dados completos:', data);
+            showNotification('Erro ao salvar compra: ' + errorMessage, 'error');
+        } catch (error) {
             console.error('Erro ao enviar para servidor:', error);
             console.error('Stack trace:', error.stack);
             const errorMessage = error.message || 'Erro desconhecido';
             showNotification('Erro ao salvar compra: ' + errorMessage + '. Verifique sua conexão.', 'error');
-            checkoutBtn.innerHTML = originalText;
-            checkoutBtn.disabled = false;
-        });
+        } finally {
+            if (checkoutBtn) {
+                checkoutBtn.innerHTML = originalText || '<i class="bi bi-credit-card"></i> Finalizar Compra';
+                checkoutBtn.disabled = false;
+            }
+        }
     }
     
 }

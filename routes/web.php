@@ -13,6 +13,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/compra/save', [ProductController::class, 'savePurchase'])->name('products.save-purchase');
     Route::delete('/purchases/{purchase}', [ProductController::class, 'destroyPurchase'])->name('purchases.destroy');
     Route::get('/api/products', [ProductController::class, 'apiProducts'])->name('products.api');
+    Route::get('/cart/state', [ProductController::class, 'getCartState'])->name('cart.state');
+    Route::post('/cart/state', [ProductController::class, 'saveCartState'])->name('cart.save');
+    Route::delete('/cart/state', [ProductController::class, 'clearCartState'])->name('cart.clear');
 });
 
 // Rotas do Sistema de Fluxo de Caixa
