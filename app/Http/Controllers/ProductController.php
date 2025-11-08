@@ -386,28 +386,31 @@ class ProductController extends Controller
                 $unit = strtolower(trim($product->unit ?? 'un'));
                 
                 // Processar quantidade e subquantidade PRIMEIRO
-                $quantity = $item['quantity'];
-                $subquantity = isset($item['subquantity']) && $item['subquantity'] > 0 ? $item['subquantity'] : null;
+                $requestedQuantity = isset($item['quantity']) ? (float) $item['quantity'] : 0;
+                $quantity = $requestedQuantity;
+                $subquantity = isset($item['subquantity']) && $item['subquantity'] > 0
+                    ? (float) $item['subquantity']
+                    : null;
                 
-                // Se há subquantidade, processar de acordo com a unidade
+                // Se há subquantidade, processar de acordo com a unidade do produto
                 if ($subquantity) {
+                    $packagesCount = $requestedQuantity > 0 ? $requestedQuantity : 1;
                     if ($unit === 'kg' || $unit === 'quilograma') {
-                        // Se unidade é kg e subquantity está em gramas, converter gramas para kg
-                        // Mas manter a subquantidade para exibição precisa
-                        $quantity = $subquantity / 1000; // Converter gramas para kg para cálculo
+                        // Converter gramas para kg considerando a quantidade solicitada (ex: 2 pacotes de 500g = 1kg)
+                        $quantity = ($subquantity / 1000) * $packagesCount;
                     } elseif ($unit === 'l' || $unit === 'litro') {
-                        // Se unidade é L e subquantity está em mililitros, converter ml para L
-                        // Mas manter a subquantidade para exibição precisa
-                        $quantity = $subquantity / 1000; // Converter mililitros para litros para cálculo
-                    } elseif ($unit === 'g' || $unit === 'grama') {
-                        // Se unidade é grama, a quantidade é a subquantidade
-                        $quantity = $subquantity;
-                        $subquantity = null; // Não precisa armazenar subquantidade se já é a unidade principal
-                    } elseif ($unit === 'ml' || $unit === 'mililitro') {
-                        // Se unidade é mililitro, a quantidade é a subquantidade
-                        $quantity = $subquantity;
-                        $subquantity = null; // Não precisa armazenar subquantidade se já é a unidade principal
+                        // Converter mililitros para litros (ex: 3 garrafas de 750ml = 2,25L)
+                        $quantity = ($subquantity / 1000) * $packagesCount;
+                    } else {
+                        // Para unidades menores (g, ml, etc.), manter a quantidade solicitada para cálculo financeiro
+                        // e preservar a subquantidade para exibição detalhada
+                        $quantity = $packagesCount;
                     }
+                }
+                
+                // Garante que a quantidade mínima utilizada no cálculo seja positiva
+                if ($quantity <= 0) {
+                    $quantity = 1;
                 }
                 
                 // Criar cashflow primeiro (usando quantidade convertida)
