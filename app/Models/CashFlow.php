@@ -42,6 +42,11 @@ class CashFlow extends Model
         return $this->belongsTo(Category::class);
     }
 
+    public function purchase()
+    {
+        return $this->hasOne(Purchase::class, 'cashflow_id');
+    }
+
     // Scopes
     public function scopeIncome($query)
     {

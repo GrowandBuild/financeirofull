@@ -37,7 +37,7 @@ class CashFlowController extends Controller
         
         // Transações recentes
         $recentTransactions = CashFlow::where('user_id', $user->id)
-            ->with('category')
+            ->with(['category', 'purchase.product'])
             ->orderBy('transaction_date', 'desc')
             ->limit(5)
             ->get();
@@ -102,7 +102,7 @@ class CashFlowController extends Controller
     public function transactions(Request $request)
     {
         $user = Auth::user();
-        $query = CashFlow::where('user_id', $user->id)->with('category');
+        $query = CashFlow::where('user_id', $user->id)->with(['category', 'purchase.product']);
         
         // Filtros
         if ($request->filled('type')) {

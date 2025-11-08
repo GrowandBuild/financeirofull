@@ -37,6 +37,22 @@
     flex-shrink: 0;
 }
 
+.transaction-image {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.1);
+}
+
+.transaction-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
 .income-badge {
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(5, 150, 105, 0.15));
     color: #10b981;
@@ -116,6 +132,11 @@
     .transaction-item {
         padding: 0.75rem;
         margin-bottom: 0.5rem !important;
+    }
+    
+    .transaction-image {
+        width: 48px;
+        height: 48px;
     }
     
     .transaction-badge {
@@ -211,26 +232,48 @@
             @if($transactions->count() > 0)
                 <div class="transaction-list-compact">
                     @foreach($transactions as $transaction)
+                    @php
+                        $purchase = $transaction->purchase;
+                        $product = $purchase ? $purchase->product : null;
+                        $productImage = $product && $product->image_url ? $product->image_url : asset('images/no-image.png');
+                        $productName = $product->name ?? null;
+                        $variant = $purchase->notes ?? null;
+                    @endphp
                     <div class="transaction-item mb-2">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div class="flex-grow-1">
-                                <div class="d-flex align-items-center gap-2 mb-1">
-                                    <span class="transaction-badge {{ $transaction->type === 'income' ? 'income-badge' : 'expense-badge' }}">
-                                        {{ $transaction->type === 'income' ? '↗' : '↙' }}
-                                    </span>
-                                    <div>
-                                        <div class="transaction-title">{{ $transaction->title }}</div>
-                                        <div class="transaction-meta">
-                                            {{ $transaction->transaction_date->format('d/m/Y') }}
-                                            @if($transaction->category)
-                                                • <span style="color: {{ $transaction->category->color }};">{{ $transaction->category->name }}</span>
-                                            @endif
+                        <div class="d-flex justify-content-between align-items-start gap-3">
+                            <div class="d-flex gap-3 flex-grow-1">
+                                @if($product || $transaction->type === 'expense')
+                                    <div class="transaction-image">
+                                        <img src="{{ $productImage }}" alt="{{ $productName ?? 'Transação' }}" onerror="this.onerror=null;this.src='{{ asset('images/no-image.png') }}';">
+                                    </div>
+                                @endif
+                                <div class="flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2 mb-1">
+                                        <span class="transaction-badge {{ $transaction->type === 'income' ? 'income-badge' : 'expense-badge' }}">
+                                            {{ $transaction->type === 'income' ? '↗' : '↙' }}
+                                        </span>
+                                        <div>
+                                            <div class="transaction-title">
+                                                {{ $transaction->title }}
+                                                @if($productName)
+                                                    <span class="text-white-50">• {{ $productName }}</span>
+                                                @endif
+                                            </div>
+                                            <div class="transaction-meta">
+                                                {{ $transaction->transaction_date->format('d/m/Y') }}
+                                                @if($transaction->category)
+                                                    • <span style="color: {{ $transaction->category->color }};">{{ $transaction->category->name }}</span>
+                                                @endif
+                                            </div>
                                         </div>
                                     </div>
+                                    @if($variant)
+                                        <div class="transaction-meta">{{ $variant }}</div>
+                                    @endif
+                                    @if($transaction->description)
+                                        <div class="transaction-desc">{{ $transaction->description }}</div>
+                                    @endif
                                 </div>
-                                @if($transaction->description)
-                                    <div class="transaction-desc">{{ $transaction->description }}</div>
-                                @endif
                             </div>
                             <div class="d-flex flex-column align-items-end gap-1">
                                 <span class="transaction-value {{ $transaction->type === 'income' ? 'text-success' : 'text-danger' }}">
