@@ -364,8 +364,10 @@ async function syncCartWithServer(force = false) {
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': CSRF_TOKEN,
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
             },
+            credentials: 'same-origin',
             body: JSON.stringify({ cart: snapshot })
         });
         
@@ -391,8 +393,10 @@ async function clearCartOnServer() {
             method: 'DELETE',
             headers: {
                 'X-CSRF-TOKEN': CSRF_TOKEN,
-                'Accept': 'application/json'
-            }
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin'
         });
         
         if (!response.ok) {

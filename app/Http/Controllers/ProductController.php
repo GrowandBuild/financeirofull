@@ -427,26 +427,9 @@ class ProductController extends Controller
                     ? (float) $item['subquantity']
                     : null;
                 
-                // Se há subquantidade, processar de acordo com a unidade do produto
-                if ($subquantity) {
-                    $packagesCount = $requestedQuantity > 0 ? $requestedQuantity : 1;
-                    if ($unit === 'kg' || $unit === 'quilograma') {
-                        // Converter gramas para kg considerando a quantidade solicitada (ex: 2 pacotes de 500g = 1kg)
-                        $quantity = ($subquantity / 1000) * $packagesCount;
-                    } elseif ($unit === 'l' || $unit === 'litro') {
-                        // Converter mililitros para litros (ex: 3 garrafas de 750ml = 2,25L)
-                        $quantity = ($subquantity / 1000) * $packagesCount;
-                    } else {
-                        // Para unidades menores (g, ml, etc.), manter a quantidade solicitada para cálculo financeiro
-                        // e preservar a subquantidade para exibição detalhada
-                        $quantity = $packagesCount;
-                    }
-                }
-                
-                // Garante que a quantidade mínima utilizada no cálculo seja positiva
-                if ($quantity <= 0) {
-                    $quantity = 1;
-                }
+                // Quantidade usada para cálculos financeiros deve permanecer alinhada ao número de itens/pacotes adquiridos.
+                // A subquantidade é armazenada separadamente para referência (gramas, ml, etc).
+                $packagesCount = $quantity > 0 ? $quantity : 1;
                 
                 // Criar cashflow primeiro (usando quantidade convertida)
                 $cashFlow = CashFlow::create([
@@ -454,7 +437,7 @@ class ProductController extends Controller
                     'type' => 'expense',
                     'title' => "Compra - {$request->store}",
                     'description' => isset($item['variant']) ? "Variante: {$item['variant']}" : $product->name,
-                    'amount' => $quantity * $item['price'],
+                    'amount' => $packagesCount * $item['price'],
                     'category_id' => $purchaseCategory->id,
                     'goal_category' => $department,
                     'transaction_date' => $request->date ?? now(),
@@ -469,9 +452,9 @@ class ProductController extends Controller
                     'subquantity' => $subquantity,
                     'cashflow_id' => $cashFlow->id,
                     'product_id' => $item['product_id'],
-                    'quantity' => $quantity,
+                    'quantity' => $packagesCount,
                     'price' => $item['price'],
-                    'total_value' => $quantity * $item['price'],
+                    'total_value' => $packagesCount * $item['price'],
                     'store' => $request->store ?? 'Loja Teste',
                     'purchase_date' => $request->date ?? now(),
                     'notes' => isset($item['variant']) ? "Variante: {$item['variant']}" : null
