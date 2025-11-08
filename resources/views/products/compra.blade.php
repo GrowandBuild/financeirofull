@@ -146,6 +146,108 @@ let cartTotal = 0;
 let cartItemsCount = 0;
 let currentProduct = null;
 
+const CART_STORAGE_KEY = 'purchaseCartData';
+let cachedLocalStorageAvailability = null;
+
+function isLocalStorageAvailable() {
+    if (cachedLocalStorageAvailability !== null) {
+        return cachedLocalStorageAvailability;
+    }
+    
+    if (typeof window === 'undefined' || !('localStorage' in window)) {
+        cachedLocalStorageAvailability = false;
+        return cachedLocalStorageAvailability;
+    }
+    
+    try {
+        const testKey = '__cart_test__';
+        window.localStorage.setItem(testKey, '1');
+        window.localStorage.removeItem(testKey);
+        cachedLocalStorageAvailability = true;
+    } catch (error) {
+        console.warn('LocalStorage indisponível:', error);
+        cachedLocalStorageAvailability = false;
+    }
+    
+    return cachedLocalStorageAvailability;
+}
+
+function saveCartToStorage() {
+    if (!isLocalStorageAvailable()) {
+        return;
+    }
+    
+    try {
+        const sanitizedCart = {};
+        Object.entries(cart).forEach(([key, item]) => {
+            if (item && typeof item === 'object') {
+                sanitizedCart[key] = {
+                    ...item,
+                    quantity: Number(item.quantity) || 0,
+                    price: Number(item.price) || 0,
+                    total: Number(item.total) || 0
+                };
+            }
+        });
+        
+        const payload = {
+            items: sanitizedCart,
+            updatedAt: Date.now()
+        };
+        
+        window.localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(payload));
+    } catch (error) {
+        console.error('Erro ao salvar carrinho no storage:', error);
+    }
+}
+
+function loadCartFromStorage() {
+    if (!isLocalStorageAvailable()) {
+        return null;
+    }
+    
+    try {
+        const raw = window.localStorage.getItem(CART_STORAGE_KEY);
+        if (!raw) {
+            return null;
+        }
+        
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed.items !== 'object' || parsed.items === null) {
+            return null;
+        }
+        
+        const loadedCart = {};
+        Object.entries(parsed.items).forEach(([key, item]) => {
+            if (item && typeof item === 'object') {
+                loadedCart[key] = {
+                    ...item,
+                    quantity: Number(item.quantity) || 0,
+                    price: Number(item.price) || 0,
+                    total: Number(item.total) || 0
+                };
+            }
+        });
+        
+        return loadedCart;
+    } catch (error) {
+        console.error('Erro ao carregar carrinho do storage:', error);
+        return null;
+    }
+}
+
+function clearCartStorage() {
+    if (!isLocalStorageAvailable()) {
+        return;
+    }
+    
+    try {
+        window.localStorage.removeItem(CART_STORAGE_KEY);
+    } catch (error) {
+        console.error('Erro ao limpar carrinho do storage:', error);
+    }
+}
+
 // Caminho da imagem padrão para fallback
 const DEFAULT_IMAGE = '{{ asset('images/no-image.png') }}';
 
@@ -361,7 +463,16 @@ function getUnitsByCategory(category) {
 // Initialize cart
 function initializeCart() {
     console.log('Inicializando carrinho');
-    cart = {};
+    
+    const storedCart = loadCartFromStorage();
+    if (storedCart && Object.keys(storedCart).length > 0) {
+        cart = storedCart;
+        console.log('Carrinho restaurado do storage:', cart);
+    } else {
+        cart = {};
+        clearCartStorage();
+    }
+    
     cartTotal = 0;
     cartItemsCount = 0;
     console.log('Carrinho inicializado:', cart);
@@ -697,6 +808,8 @@ function updateCartDisplay() {
         document.getElementById('cartItemsSection').style.display = 'none';
         document.getElementById('checkoutSection').style.display = 'none';
     }
+    
+    saveCartToStorage();
 }
 
 // Update product card display
@@ -792,7 +905,11 @@ function toggleProductList() {
 // Clear cart
 function clearCart() {
     if (confirm('Tem certeza que deseja limpar o carrinho?')) {
-        initializeCart();
+        cart = {};
+        cartTotal = 0;
+        cartItemsCount = 0;
+        clearCartStorage();
+        updateCartDisplay();
         // Reset all product cards
         document.querySelectorAll('.cart-product-card').forEach(card => {
             card.classList.remove('in-cart');
