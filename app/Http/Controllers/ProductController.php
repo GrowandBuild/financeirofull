@@ -223,7 +223,7 @@ class ProductController extends Controller
             'average_price', 'last_price', 'total_spent', 'purchase_count'
         ])
         ->orderBy('name')
-        ->paginate(100); // Usar paginação em vez de limit arbitrário
+        ->paginate(36); // Exibir até 36 produtos por página
 
         // Calcular estatísticas mensais usando Service
         // Converter o paginator para Collection para passar ao serviço

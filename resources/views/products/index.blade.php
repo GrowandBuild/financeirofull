@@ -379,6 +379,45 @@
     margin-top: 0.125rem;
 }
 
+.premium-product-grid {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 2rem;
+}
+
+@media (max-width: 1400px) {
+    .premium-product-grid {
+        grid-template-columns: repeat(10, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 1200px) {
+    .premium-product-grid {
+        grid-template-columns: repeat(8, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 992px) {
+    .premium-product-grid {
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .premium-product-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 576px) {
+    .premium-product-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
 /* Responsividade - Mobile: 4 produtos */
 @media (max-width: 768px) {
     .recent-products-grid {
