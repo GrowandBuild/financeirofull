@@ -39,7 +39,7 @@ class ProductController extends Controller
             'average_price', 'last_price', 'total_spent', 'purchase_count'
         ])
         ->withCount('purchases')
-        ->paginate(12);
+        ->paginate(36);
 
         // Calcular estatísticas mensais para produtos da página atual usando Service
         // Converter o paginator para Collection para passar ao serviço
